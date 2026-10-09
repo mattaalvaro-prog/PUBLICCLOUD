@@ -1,0 +1,101 @@
+table_name,column_name,data_type,is_nullable,column_default
+General_questionarie,ID_Cuestionario,integer,NO,"nextval('""General_questionarie_ID_Cuestionario_seq""'::regclass)"
+General_questionarie,Area,character varying,YES,null
+General_questionarie,id_lob,character varying,YES,null
+General_questionarie,PREGUNTA,text,YES,null
+General_questionarie,Descripcion,text,YES,null
+General_questionarie,Id_idioma,character varying,YES,null
+api_credentials_vault,id,integer,NO,nextval('api_credentials_vault_id_seq'::regclass)
+api_credentials_vault,key_name,character varying,NO,null
+api_credentials_vault,key_value,text,YES,null
+api_credentials_vault,description,text,YES,null
+api_credentials_vault,category,character varying,YES,null
+api_credentials_vault,is_secret,boolean,YES,true
+api_credentials_vault,updated_at,timestamp with time zone,YES,CURRENT_TIMESTAMP
+api_credentials_vault,updated_by,character varying,YES,null
+cliente_proy,id,integer,NO,nextval('cliente_proy_id_seq'::regclass)
+cliente_proy,client_id,integer,YES,null
+cliente_proy,id_proyecto,character varying,NO,null
+cliente_proy,descripcion_prj,character varying,YES,null
+cliente_proy,sharepoint_url,text,YES,null
+cliente_proy,created_at,timestamp without time zone,YES,CURRENT_TIMESTAMP
+cliente_proy,go_live_date,date,YES,null
+cliente_proy,support_start_date,date,YES,null
+cliente_proy,support_end_date,date,YES,null
+clients,id,integer,NO,nextval('clients_id_seq'::regclass)
+clients,nombre_cliente,character varying,NO,null
+clients,abrev,character varying,NO,null
+clients,contacto,character varying,YES,null
+clients,mail,character varying,YES,null
+clients,tel,character varying,YES,null
+clients,created_at,timestamp without time zone,YES,CURRENT_TIMESTAMP
+clients,abreviatura_3,character varying,YES,null
+documentos,id,integer,NO,nextval('documentos_id_seq'::regclass)
+documentos,cliente,character varying,YES,null
+documentos,proyecto,character varying,YES,null
+documentos,id_fase,character varying,YES,null
+documentos,tipo_documento,character varying,YES,null
+documentos,numerador,character varying,YES,null
+documentos,url,text,YES,null
+documentos,id_lob,character varying,YES,null
+documentos,nombre_taller,character varying,YES,null
+documentos,fecha,date,YES,CURRENT_DATE
+documentos,created_at,timestamp without time zone,YES,CURRENT_TIMESTAMP
+general_bpml,bpml_id,text,NO,null
+general_bpml,id_e2e,text,YES,null
+general_bpml,negocio,text,YES,null
+general_bpml,grupo_proceso_l1,text,YES,null
+general_bpml,grupo_proceso_l2,text,YES,null
+general_bpml,nombre_proceso_l3,text,YES,null
+general_bpml,id_bp,text,YES,null
+general_bpml,nombre_scope_item_sap_best_practice,text,YES,null
+general_bpml,nombre_proceso_l4,text,YES,null
+general_bpml,estructura_organizativa_objetivo,text,YES,null
+general_bpml,evento_desencadenante,text,YES,null
+general_bpml,evento_final_resultado,text,YES,null
+general_bpml,rol_negocio_principal,text,YES,null
+general_bpml,objetos_datos_clave,text,YES,null
+general_bpml,reglas_negocio_clave,text,YES,null
+general_bpml,integraciones_estandar,text,YES,null
+general_bpml,controles_clave,text,YES,null
+general_bpml,kpis_clave,text,YES,null
+general_bpml,seleccionado,boolean,YES,false
+general_uats,id,integer,NO,nextval('general_uats_id_seq'::regclass)
+general_uats,id_lob,character varying,YES,null
+general_uats,id_casop,character varying,YES,null
+general_uats,id_bp,character varying,YES,null
+general_uats,proceso_scope_item,text,YES,null
+general_uats,escenario,text,YES,null
+general_uats,actividades_proceso,text,YES,null
+general_uats,precondiciones,text,YES,null
+general_uats,pasos_detallados,text,YES,null
+general_uats,datos_prueba,text,YES,null
+general_uats,resultado_esperado,text,YES,null
+incidencias,id,integer,NO,nextval('incidencias_id_seq'::regclass)
+incidencias,numero_incidencia,character varying,NO,null
+incidencias,cliente_id,integer,YES,null
+incidencias,proyecto_id,integer,YES,null
+incidencias,fecha_incid,date,YES,CURRENT_DATE
+incidencias,resp_cliente,character varying,YES,null
+incidencias,tipo,character varying,YES,null
+incidencias,tipo_altim,character varying,YES,null
+incidencias,lob,character varying,YES,null
+incidencias,descripcion,text,YES,null
+incidencias,error_mensaje,text,YES,null
+incidencias,observaciones,text,YES,null
+incidencias,prioridad,character varying,YES,null
+incidencias,comentarios,text,YES,null
+incidencias,sistema,character varying,YES,null
+incidencias,resp_altim,character varying,YES,null
+incidencias,estado,character varying,YES,null
+incidencias,fecha_entrega,date,YES,null
+incidencias,fecha_cierre,date,YES,null
+incidencias,comentarios_finales,text,YES,null
+incidencias,responsable,character varying,YES,null
+incidencias,created_at,timestamp with time zone,YES,CURRENT_TIMESTAMP
+incident_audit_logs,id,integer,NO,nextval('incident_audit_logs_id_seq'::regclass)
+incident_audit_logs,incident_id,integer,YES,null
+incident_audit_logs,usuario_email,character varying,YES,null
+incident_audit_logs,accion,character varying,YES,null
+incident_audit_logs,campo_modificado,character varying,YES,null
+incident_audit_logs,valor_anterior,text,YES,null

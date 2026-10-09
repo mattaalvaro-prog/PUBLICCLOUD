@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>ALTIM PORTAL CLOUD</title>
+    <link rel="stylesheet" href="styles.css?v=1791455145">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+
+<body>
+    <!-- Login Section -->
+    <div id="auth-page" class="auth-container">
+        <div class="auth-card">
+            <img src="logo_negro_hi_res.jpg" alt="ALTIM Logo" class="auth-logo">
+            <h2 class="auth-title">PORTAL CLOUD</h2>
+            <p class="auth-subtitle">Inicia sesión para gestionar tus proyectos</p>
+            <form id="login-form">
+                <div class="input-group">
+                    <label for="email">Correo Electrónico</label>
+                    <input type="email" id="email" required placeholder="ejemplo@altim.es">
+                </div>
+                <div class="input-group">
+                    <label for="password">Contraseña</label>
+                    <input type="password" id="password" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn">Acceder</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="app-page" class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <img src="logo_negro_hi_res.jpg" alt="ALTIM Logo" class="sidebar-logo">
+            <nav style="flex: 1; overflow-y: auto;">
+                <ul class="nav-list">
+                    <li class="nav-item active" data-module="dashboard">
+                        <i class="fas fa-home"></i>
+                        <span>Dashboard</span>
+                    </li>
+
+                    <div class="sidebar-section-header" id="sidebar-general-header">General</div>
+                    <li class="nav-item" data-module="usu" id="sidebar-item-usu">
+                        <i class="fas fa-users-cog"></i>
+                        <span>Usuarios</span>
+                    </li>
+                    <li class="nav-item" data-module="cli" id="sidebar-item-cli">
+                        <i class="fas fa-building"></i>
+                        <span>Clientes</span>
+                    </li>
+                    <li class="nav-item" data-module="mae" id="sidebar-item-mae">
+                        <i class="fas fa-database"></i>
+                        <span>Maestros</span>
+                    </li>
+                    <li class="nav-item" data-module="rol" id="sidebar-item-rol">
+                        <i class="fas fa-user-tag"></i>
+                        <span>Roles</span>
+                    </li>
+
+                    <div class="sidebar-section-header">Proyectos</div>
+                    <li class="nav-item" data-module="prj">
+                        <i class="fas fa-search-plus"></i>
+                        <span>Selección PRJ</span>
+                    </li>
+                    <li class="nav-item" data-module="proy">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Info Proyecto</span>
+                    </li>
+                    <li class="nav-item" data-module="doc">
+                        <i class="fas fa-folder"></i>
+                        <span>Documentación</span>
+                    </li>
+                    <li class="nav-item" data-module="ges">
+                        <i class="fas fa-briefcase"></i>
+                        <span>Gestión</span>
+                    </li>
+                    <li class="nav-item" data-module="tar">
+                        <i class="fas fa-tasks"></i>
+                        <span>Tareas</span>
+                    </li>
+                    <li class="nav-item" data-module="seg">
+                        <i class="fas fa-clipboard-check"></i>
+                        <span>Req. Info</span>
+                    </li>
+
+                    <div class="sidebar-section-header">Fases del Proyecto</div>
+                    <li class="nav-item" data-module="des">
+                        <i class="fas fa-search"></i>
+                        <span>DESCUBRIR</span>
+                    </li>
+                    <li class="nav-item" data-module="pre">
+                        <i class="fas fa-clipboard-list"></i>
+                        <span>PREPARAR</span>
+                    </li>
+                    <li class="nav-item" data-module="exp">
+                        <i class="fas fa-compass"></i>
+                        <span>EXPLORAR</span>
+                    </li>
+                    <li class="nav-item" data-module="rea">
+                        <i class="fas fa-code"></i>
+                        <span>REALIZAR</span>
+                    </li>
+                    <li class="nav-item" data-module="dey">
+                        <i class="fas fa-ticket-alt"></i>
+                        <span>DEY (DESPLEGAR)</span>
+                    </li>
+                    <li class="nav-item" data-module="eje">
+                        <i class="fas fa-play"></i>
+                        <span>EJECUTAR</span>
+                    </li>
+
+                    <div class="sidebar-section-header">Informes</div>
+                    <li class="nav-item" data-module="est">
+                        <i class="fas fa-chart-pie"></i>
+                        <span>Estadística</span>
+                    </li>
+                    <li class="nav-item" data-module="mod">
+                        <i class="fas fa-history"></i>
+                        <span>Modificaciones</span>
+                    </li>
+
+                    <div class="sidebar-section-header">S/4HANA</div>
+                    <li class="nav-item sidebar-link-external" data-module="s4-link">
+                        <i class="fas fa-cloud"></i>
+                        <span>Cloud Pública</span>
+                    </li>
+
+                    <div class="sidebar-section-header">Soporte</div>
+                    <li class="nav-item" data-module="ayu">
+                        <i class="fas fa-question-circle" style="color: #00bcd4;"></i>
+                        <span>Ayuda</span>
+                    </li>
+                </ul>
+            </nav>
+            <div class="user-profile" onclick="renderMyProfile()" style="cursor:pointer">
+                <div class="user-avatar"></div>
+                <div class="user-info">
+                    <h4 id="user-display-name">Usuario</h4>
+                    <p id="user-display-role">Rol</p>
+                </div>
+                <i class="fas fa-sign-out-alt" style="margin-left: auto; cursor: pointer;" id="logout-btn-sidebar"
+                    onclick="event.stopPropagation()"></i>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-left" style="align-items: flex-start; flex-direction: column; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 1.5rem;">
+                        <img src="logo_negro_hi_res.jpg" alt="ALTIM Logo" class="header-logo" style="height: 55px;">
+                        <div class="project-info"
+                            style="display: flex; flex-direction: column; justify-content: center;">
+                            <span id="current-project-header">Ninguno seleccionado</span>
+                            <span id="current-project-desc"
+                                style="font-size: 0.75rem; color: #666; font-style: italic; line-height: 1;"></span>
+                        </div>
+                    </div>
+                    <div class="header-user-info" style="display: flex; flex-direction: column; line-height: 1.2;">
+                        <span id="header-user-name"
+                            style="font-weight: 700; color: var(--primary-color); font-size: 0.9rem;"></span>
+                        <span id="header-user-role" style="font-size: 0.75rem; color: #666; font-weight: 600;"></span>
+                    </div>
+                    <button class="btn" id="back-to-home-header" onclick="showView('my-home')" 
+                        style="background-color: #fff3e0; color: #e65100; border: 1px solid #ffe0b2; padding: 4px 12px; font-size: 0.75rem; font-weight: 700; height: 26px; display: flex; align-items: center; gap: 6px; border-radius: 4px; margin-top: 2px;">
+                        <i class="fas fa-home"></i> Volver a My Home
+                    </button>
+                </div>
+
+                <div class="project-timeline" id="header-timeline">
+                    <!-- Dynamic Arrow Steps will be rendered here -->
+                    <div class="arrow-steps" id="timeline-steps"></div>
+                    <div id="today-marker-container"></div>
+                    <div id="go-live-container"></div>
+                </div>
+                
+                <div class="header-right" style="display: flex; align-items: center; gap: 15px;">
+                    <div id="clock">00:00:00</div>
+                    <button class="icon-btn-small" id="lang-btn">ES</button>
+                    <button class="btn btn-outline" id="config-btn" onclick="openSysConfigModal()"
+                        style="padding: 4px 8px; font-size: 0.8rem; margin-right: 5px;"><i class="fas fa-cogs"></i>
+                        Configuración del Sistema</button>
+                    <button class="icon-btn-small" id="help-btn-header" onclick="openModule('ayu')" title="Guía de Usuario"><i class="fas fa-question-circle" style="color: #00bcd4;"></i></button>
+                    
+                    <!-- NOTIFICATIONS -->
+                    <div class="notification-container" id="notification-container" style="display: none; position: relative;">
+                        <button class="icon-btn-small" id="notif-btn" onclick="openNotificationsModal()" title="Notificaciones de Proyecto">
+                            <i class="fas fa-bell"></i>
+                            <span id="notif-badge" class="notif-badge hidden">0</span>
+                        </button>
+                    </div>
+
+                    <button class="icon-btn" id="profile-btn"><i class="fas fa-user-circle"></i></button>
+                    <button class="btn btn-outline" id="logout-btn-header" style="height: 32px;">Salir</button>
+                </div>
+            </header>
+
+            <!-- My Home Dashboard -->
+            <div id="my-home-view" class="view-container active">
+                <h1 class="view-title">My Home</h1>
+
+                <div class="dashboard-layout">
+                    <div class="dashboard-left">
+                        <div class="dashboard-grid">
+                            <!-- Section A: General -->
+                            <div class="dashboard-section" id="dashboard-general-section">
+                                <h3>General</h3>
+                                <div class="title-cards">
+                                    <div class="title-card" data-view="usu">
+                                        <span class="title-abbr">USU</span>
+                                        <div class="title-kpi" id="kpi-usu">0</div>
+                                        <span class="title-desc">Gestión de usuarios</span>
+                                    </div>
+                                    <div class="title-card" data-view="cli">
+                                        <span class="title-abbr">CLI</span>
+                                        <div class="title-kpi" id="kpi-cli">0</div>
+                                        <span class="title-desc">Gestión de clientes</span>
+                                    </div>
+                                    <div class="title-card" data-view="mae">
+                                        <span class="title-abbr">MAE</span>
+                                        <div class="title-icon"><i class="fas fa-database"></i></div>
+                                        <span class="title-desc">Mantenimiento de Maestros</span>
+                                    </div>
+                                    <div class="title-card" data-view="rol">
+                                        <span class="title-abbr">ROL</span>
+                                        <div class="title-icon"><i class="fas fa-user-tag"></i></div>
+                                        <span class="title-desc">Gestión de Roles</span>
+                                    </div>
+                                    <div class="title-card card-new" data-view="new">
+                                        <span class="title-abbr">NEW</span>
+                                        <div class="title-icon"><i class="fas fa-plus"></i></div>
+                                        <span class="title-desc">NUEVO (+)</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section B: Proyectos -->
+                            <div class="dashboard-section">
+                                <h3>Proyectos</h3>
+                                <div class="title-cards">
+                                    <div class="title-card" data-view="prj">
+                                        <span class="title-abbr">PRJ</span>
+                                        <div class="title-icon"><i class="fas fa-search-plus"></i></div>
+                                        <span class="title-desc">Seleccionar proyecto</span>
+                                    </div>
+                                    <div class="title-card" data-view="proy">
+                                        <span class="title-abbr">PROY</span>
+                                        <div class="title-icon"><i class="fas fa-info-circle"></i></div>
+                                        <span class="title-desc">Información de proyecto</span>
+                                    </div>
+                                    <div class="title-card" data-view="doc">
+                                        <span class="title-abbr">DOC</span>
+                                        <div class="title-kpi" id="kpi-doc">0</div>
+                                        <span class="title-desc">Documentación de Proyectos</span>
+                                    </div>
+                                    <div class="title-card" data-view="ges">
+                                        <span class="title-abbr">GES</span>
+                                        <div class="title-icon"><i class="fas fa-briefcase"></i></div>
+                                        <span class="title-desc">Gestión de Proyecto</span>
+                                    </div>
+                                    <div class="title-card" data-view="tar">
+                                        <span class="title-abbr">TAR</span>
+                                        <div class="title-icon"><i class="fas fa-tasks"></i></div>
+                                        <span class="title-desc">Gestión de Tareas</span>
+                                    </div>
+                                    <div class="title-card" data-view="seg">
+                                        <span class="title-abbr">SEG</span>
+                                        <div class="title-icon"><i class="fas fa-clipboard-check"></i></div>
+                                        <span class="title-desc">Requerimiento de información</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section C: Fases del proyecto -->
+                            <div class="dashboard-section">
+                                <h3>Fases del Proyecto</h3>
+                                <div class="title-cards">
+                                    <div class="title-card" data-view="des">
+                                        <span class="title-abbr">DES</span>
+                                        <div class="title-kpi" id="kpi-des">0</div>
+                                        <span class="title-desc">Fase DESCUBRIR</span>
+                                    </div>
+                                    <div class="title-card" data-view="pre">
+                                        <span class="title-abbr">PRE</span>
+                                        <div class="title-kpi" id="kpi-pre">0</div>
+                                        <span class="title-desc">Fase PREPARAR</span>
+                                    </div>
+                                    <div class="title-card" data-view="exp">
+                                        <span class="title-abbr">EXP</span>
+                                        <div class="title-kpi" id="kpi-exp">0</div>
+                                        <span class="title-desc">Fase EXPLORAR</span>
+                                    </div>
+                                    <div class="title-card" data-view="rea">
+                                        <span class="title-abbr">REA</span>
+                                        <div class="title-kpi" id="kpi-rea">0</div>
+                                        <span class="title-desc">Fase REALIZAR</span>
+                                    </div>
+                                    <div class="title-card" data-view="dey">
+                                        <span class="title-abbr">DEY</span>
+                                        <div class="title-icon"><i class="fas fa-ticket-alt"></i></div>
+                                        <span class="title-desc">Fase DESPLEGAR</span>
+                                    </div>
+                                    <div class="title-card" data-view="eje">
+                                        <span class="title-abbr">EJE</span>
+                                        <div class="title-icon"><i class="fas fa-play"></i></div>
+                                        <span class="title-desc">Fase EJECUTAR</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section D: Informes -->
+                            <div class="dashboard-section">
+                                <h3>Informes</h3>
+                                <div class="title-cards">
+                                    <div class="title-card" data-view="est">
+                                        <span class="title-abbr">EST</span>
+                                        <div class="title-icon"><i class="fas fa-chart-pie"></i></div>
+                                        <span class="title-desc">Estadística y Analíticas</span>
+                                    </div>
+                                    <div class="title-card" data-view="mod">
+                                        <span class="title-abbr">MOD</span>
+                                        <div class="title-kpi" id="kpi-mod">0</div>
+                                        <span class="title-desc">Log de modificaciones</span>
+                                    </div>
+                                    <div class="title-card" data-view="rep">
+                                        <span class="title-abbr">REP</span>
+                                        <div class="title-icon"><i class="fas fa-file-invoice"></i></div>
+                                        <span class="title-desc">Reporting</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Section E: Soporte -->
+                            <div class="dashboard-section">
+                                <h3>Soporte</h3>
+                                <div class="title-cards">
+                                    <div class="title-card" data-view="ayu" style="border-bottom: 3px solid #00bcd4;">
+                                        <span class="title-abbr">AYU</span>
+                                        <div class="title-icon"><i class="fas fa-question-circle" style="color: #00bcd4;"></i></div>
+                                        <span class="title-desc">Guía de Usuario y Ayuda</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-right">
+                        <div class="news-carousel-card">
+                            <h3>Novedades</h3>
+                            <div id="news-carousel-container" class="carousel-container">
+                                <p style="text-align:center; padding:2rem; color:#999;"><i class="fas fa-spinner fa-spin"></i> Cargando noticias...</p>
+                            </div>
+                            <div id="carousel-dots" class="carousel-dots"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Module Views -->
+            <div id="module-container" class="view-container">
+                <div class="view-header">
+                    <button class="btn-back" id="back-to-home"><i class="fas fa-arrow-left"></i> Volver a My
+                        Home</button>
+                    <h2 id="module-title">Módulo</h2>
+                </div>
+                <div id="module-content">
+                    <!-- Dynamic Module Content -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <!-- User Modal -->
+    <div id="user-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeUserModal()">&times;</button>
+            <h3 class="modal-title" id="user-modal-title">Nuevo Usuario</h3>
+            <form id="user-form">
+                <input type="hidden" id="user-original-email">
+                <div class="form-group">
+                    <label for="user-email">Email</label>
+                    <input type="email" id="user-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="user-password">Contraseña</label>
+                    <input type="password" id="user-password" required>
+                </div>
+                <div class="form-group">
+                    <label for="user-name">Nombre</label>
+                    <input type="text" id="user-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="user-lastname">Apellidos</label>
+                    <input type="text" id="user-lastname" required>
+                </div>
+                <div class="form-group">
+                    <label for="user-type">Tipo de Usuario</label>
+                    <select id="user-type" required>
+                        <option value="Altim">Altim</option>
+                        <option value="Cliente">Cliente</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="user-role">Rol</label>
+                    <select id="user-role" required>
+                        <!-- Dynamic options based on type -->
+                    </select>
+                </div>
+                <div class="form-group" id="user-cliente-single-group">
+                    <label for="user-cliente">Cliente / Empresa</label>
+                    <select id="user-cliente">
+                        <option value="">-- Seleccionar Cliente --</option>
+                    </select>
+                </div>
+                <div class="form-group" id="user-clients-multi-group" style="display:none;">
+                    <label>Clientes Asignados (Multi-Selección)</label>
+                    <button type="button" class="btn btn-outline" style="width:100%; margin-bottom:0.5rem;"
+                        onclick="window.openSelectionPopup('clients')">
+                        <i class="fas fa-search"></i> Seleccionar Clientes <span id="client-count-badge" class="badge"
+                            style="background:var(--sap-blue); margin-left:5px; display:none;">0</span>
+                    </button>
+                    <div id="user-clients-summary"
+                        style="font-size:0.75rem; color:#666; margin-bottom:1rem; padding:0.5rem; background:#f9f9f9; border-radius:4px; min-height:1.5rem;">
+                        Ninguno seleccionado</div>
+                </div>
+                <div class="form-group">
+                    <label for="user-address">Dirección</label>
+                    <input type="text" id="user-address">
+                </div>
+                <div class="form-group">
+                    <label for="user-phone">Teléfono</label>
+                    <input type="tel" id="user-phone">
+                </div>
+                <div class="form-group" id="user-projects-group">
+                    <label>Proyectos Asignados</label>
+                    <button type="button" class="btn btn-outline" style="width:100%; margin-bottom:0.5rem;"
+                        onclick="window.openSelectionPopup('projects')">
+                        <i class="fas fa-search"></i> Seleccionar Proyectos <span id="project-count-badge" class="badge"
+                            style="background:var(--sap-blue); margin-left:5px; display:none;">0</span>
+                    </button>
+                    <div id="user-projects-summary"
+                        style="font-size:0.75rem; color:#666; margin-bottom:1rem; padding:0.5rem; background:#f9f9f9; border-radius:4px; min-height:1.5rem;">
+                        Ninguno seleccionado</div>
+                </div>
+                <div class="form-group">
+                    <label>Imagen de Perfil</label>
+                    <div style="display:flex; gap:1rem; align-items:center;">
+                        <img id="user-image-preview" src="logo.png"
+                            style="width:50px; height:50px; border-radius:50%; border:1px solid #ddd; object-fit:cover;">
+                        <input type="file" id="user-image-file" accept="image/*" style="font-size:0.7rem;">
+                    </div>
+                    <input type="hidden" id="user-image">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeUserModal()">Cancelar</button>
+                    <button type="submit" class="btn">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+
+    <!-- Client Modal -->
+    <div id="client-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeClientModal()">&times;</button>
+            <h3 class="modal-title" id="client-modal-title">Nuevo Cliente</h3>
+            <form id="client-form">
+                <input type="hidden" id="client-original-id">
+                <div class="form-group">
+                    <label for="client-name">Nombre Cliente</label>
+                    <input type="text" id="client-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="client-abrev">ABREV</label>
+                    <input type="text" id="client-abrev" required maxlength="10">
+                </div>
+                <div class="form-group">
+                    <label for="client-abrev-3">Abreviatura (3 caracteres)</label>
+                    <input type="text" id="client-abrev-3" required maxlength="3" minlength="3" placeholder="Ej: ALT">
+                </div>
+                <div class="form-group">
+                    <label for="client-contact">Contacto</label>
+                    <input type="text" id="client-contact">
+                </div>
+                <div class="form-group">
+                    <label for="client-mail">Correo Automático</label>
+                    <input type="email" id="client-mail">
+                </div>
+                <div class="form-group">
+                    <label for="client-tel">Teléfono</label>
+                    <input type="tel" id="client-tel">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeClientModal()">Cancelar</button>
+                    <button type="submit" class="btn">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- External Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script src="https://unpkg.com/i18next@21.6.10/dist/umd/i18next.min.js"></script>
+    <script src="guide_content.js"></script>
+    <script src="app.js?v=1791455200"></script>
+    <!-- Incident Modal -->
+    <div id="incident-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 950px; width: 90%;">
+            <button class="modal-close" onclick="closeIncidentModal()">&times;</button>
+            <h3 class="modal-title" id="incident-modal-title">Gestión de Incidencia</h3>
+            <form id="incident-form">
+                <input type="hidden" id="incident-id">
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem;">
+                    <div class="form-group">
+                        <label for="inc-numero">Nº Incidencia</label>
+                        <input type="text" id="inc-numero" readonly style="background: #f4f4f4;">
+                    </div>
+                    <div class="form-group">
+                        <label for="inc-fecha">Fecha Incidencia *</label>
+                        <input type="date" id="inc-fecha" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="inc-resp-cliente">Responsable Cliente</label>
+                        <select id="inc-resp-cliente"></select>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem;">
+                    <div class="form-group">
+                        <label for="inc-tipo">Tipo</label>
+                        <select id="inc-tipo" required>
+                            <option value="Incidencia" selected>Incidencia</option>
+                            <option value="Consulta">Consulta</option>
+                            <option value="Duda">Duda</option>
+                            <option value="Evolutivo">Evolutivo</option>
+                            <option value="Formación">Formación</option>
+                            <option value="Gestión">Gestión</option>
+                            <option value="Petición">Petición</option>
+                            <option value="Preventiva">Preventiva</option>
+                            <option value="Proyecto">Proyecto</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="inc-prioridad">Prioridad</label>
+                        <select id="inc-prioridad" required>
+                            <option value="Crítica">Crítica</option>
+                            <option value="Alta">Alta</option>
+                            <option value="Media" selected>Media</option>
+                            <option value="Baja">Baja</option>
+                            <option value="Sin prioridad">Sin prioridad</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="inc-lob">LoB (Línea de Negocio)</label>
+                        <select id="inc-lob">
+                            <option value="">- Seleccione -</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem;">
+                    <div class="form-group">
+                        <label for="inc-sistema">Sistema *</label>
+                        <select id="inc-sistema" required>
+                            <option value="S/4Hana OP" selected>S/4Hana OP</option>
+                            <option value="S/4Hana CP">S/4Hana CP</option>
+                            <option value="S/4Hana Rise">S/4Hana Rise</option>
+                            <option value="SAP BTP">SAP BTP</option>
+                            <option value="SuccessFactors">SuccessFactors</option>
+                            <option value="Ariba">Ariba</option>
+                            <option value="SAC">SAC</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="inc-tipo-altim">Tipo ALTIM</label>
+                        <select id="inc-tipo-altim">
+                            <option value="">-- Seleccionar --</option>
+                            <option value="Incidencia">Incidencia</option>
+                            <option value="Consulta">Consulta</option>
+                            <option value="Duda">Duda</option>
+                            <option value="Evolutivo">Evolutivo</option>
+                            <option value="Formación">Formación</option>
+                            <option value="Gestión">Gestión</option>
+                            <option value="Petición">Petición</option>
+                            <option value="Preventiva">Preventiva</option>
+                            <option value="Proyecto">Proyecto</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="inc-resp-altim">Responsable ALTIM</label>
+                        <select id="inc-resp-altim"></select>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0.5rem; width: 100%;">
+                    <label for="inc-descripcion" style="display:block;">Descripción Corta *</label>
+                    <input type="text" id="inc-descripcion-corta" required placeholder="Resumen de la incidencia"
+                        style="padding: 4px; width: 100%; box-sizing: border-box;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0.5rem; width: 100%;">
+                    <label for="inc-descripcion" style="display:block;">Descripción Detallada *</label>
+                    <textarea id="inc-descripcion" rows="6" required placeholder="Detalles completos de la incidencia"
+                        style="padding: 4px; width: 100%; box-sizing: border-box; resize: vertical; display: block;"></textarea>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem;">
+                    <div class="form-group">
+                        <label for="inc-error-mensaje">Mensaje de Error / Evidencia</label>
+                        <input type="text" id="inc-error-mensaje" placeholder="Código de error">
+                    </div>
+                    <div class="form-group">
+                        <label for="inc-estado">Estado</label>
+                        <select id="inc-estado" required>
+                            <option value="01 En proceso">01 En proceso</option>
+                            <option value="02 Retrasada Altim">02 Retrasada Altim</option>
+                            <option value="03 Entregada">03 Entregada</option>
+                            <option value="04 Pte Info cliente">04 Pte Info cliente</option>
+                            <option value="05 Pte de Pruebas cliente">05 Pte de Pruebas cliente</option>
+                            <option value="06 Retrasada cliente">06 Retrasada cliente</option>
+                            <option value="07 Parada por cliente">07 Parada por cliente</option>
+                            <option value="08 Abierta">08 Abierta</option>
+                            <option value="09 Nueva" selected>09 Nueva</option>
+                            <option value="10 Cerrada">10 Cerrada</option>
+                            <option value="11 Descartada">11 Descartada</option>
+                            <option value="12 Duplicada">12 Duplicada</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0.5rem; width: 100%;">
+                    <label for="inc-observaciones" style="display:block;">Pasos para replicar / Observaciones</label>
+                    <textarea id="inc-observaciones" rows="5"
+                        style="padding: 4px; width: 100%; box-sizing: border-box; resize: vertical; display: block;"></textarea>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0.5rem; width: 100%;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                        <label for="inc-comentarios" style="display:block;">Solución / Comentarios (Sugerencia
+                            IA)</label>
+                        <button type="button" class="btn btn-outline btn-sm" id="btn-ai-suggestion"
+                            style="padding: 2px 10px; font-size: 0.75rem;">
+                            <i class="fas fa-magic"></i> Sugerir con IA
+                        </button>
+                    </div>
+                    <textarea id="inc-comentarios" rows="5"
+                        style="padding: 4px; width: 100%; box-sizing: border-box; resize: vertical; display: block;"></textarea>
+                </div>
+
+                <div class="modal-footer"
+                    style="padding-top: 0.5rem; border-top: 1px solid #eee; margin-top: 0.5rem; text-align: right;">
+                    <button type="button" class="btn btn-outline" onclick="closeIncidentModal()">Cancelar</button>
+                    <button type="submit" class="btn">Guardar Incidencia</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- SYSTEM CONFIGURATION MODAL -->
+    <div id="sysconfig-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 700px;">
+            <h2
+                style="font-size: 1.3rem; color: var(--primary-color); margin-bottom: 1rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem;">
+                <i class="fas fa-cogs"></i> Configuración Global del Sistema
+            </h2>
+            <form id="sysconfig-form">
+                <div id="sysconfig-fields"
+                    style="display: flex; flex-direction: column; gap: 1rem; max-height: 60vh; overflow-y: auto; padding-right: 10px;">
+                    <!-- Dynamic Fields mapped by app.js here -->
+                </div>
+                <div class="modal-footer"
+                    style="padding-top: 1rem; border-top: 1px solid #eee; margin-top: 1rem; text-align: right;">
+                    <button type="button" class="btn btn-outline" onclick="closeSysConfigModal()">Cancelar</button>
+                    <button type="submit" class="btn">Guardar Configuración</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+
+</html>

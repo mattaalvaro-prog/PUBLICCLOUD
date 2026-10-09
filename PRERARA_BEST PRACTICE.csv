@@ -1,0 +1,408 @@
+﻿id;id_lob;denominacion_bp;id_bp
+1;Ledger Scenarios;Accounting and Financial Close ? Group Ledger IFRS;1GA
+2;Application Platform and Infrastructure;Engineer Products and Systems ? Project with Production;6GD
+3;Application Platform and Infrastructure;Responsibility Management;1NJ
+4;Application Platform and Infrastructure;Situation Handling;31N
+5;Asset Management;Improvement Maintenance;4VT
+6;Asset Management;Integration with Asset Central Foundation;3YE
+7;Asset Management;Operational and Overhead Maintenance;4WM
+8;Asset Management;Proactive Maintenance;4HI
+9;Asset Management;Reactive Maintenance;4HH
+10;Database and Data Management;ABAP Core Data Services Extraction for SAP Data Intelligence;53M
+11;Database and Data Management;ABAP Core Data Services Extraction for SAP Datasphere;53L
+12;Database and Data Management;ABAP Core Data Services Extraction for SAP HANA;6N4
+13;Database and Data Management;Automotive Supply to Customer ? Inventory Management;55F
+14;Database and Data Management;CDS-Based Extraction with SAP S/4HANA Cloud Public Edition;35D
+15;Database and Data Management;Core HR with SAP SuccessFactors Employee Central;JB1
+16;Database and Data Management;Customer Data Return;5I9
+17;Database and Data Management;Data Migration to SAP S/4HANA from SAP;BH3
+18;Database and Data Management;Data Migration to SAP S/4HANA from Staging;2Q2
+19;Database and Data Management;Data Protection and Privacy;5LE
+20;Database and Data Management;Engineer Products and Systems ? Project with Production;6GD
+21;Database and Data Management;Import Connection Setup with SAP Analytics Cloud;1YB
+22;Database and Data Management;Information Lifecycle Management;1KA
+23;Database and Data Management;Mass Load and Mass Maintenance for Business Partner;1RK
+24;Database and Data Management;Mass Load and Mass Maintenance for Product;1RM
+25;Database and Data Management;Master Data Integration;1RO
+26;Database and Data Management;Payroll Processing with SAP ERP HCM Payroll;3UP
+27;Database and Data Management;Payroll Processing with SAP SuccessFactors Employee Central Payroll;1NL
+28;Database and Data Management;Produce and Sell Standard Products ? Inventory Management;54U
+29;Database and Data Management;Responsibility Management;1NJ
+30;Database and Data Management;Subsidiary Integration of SAP S/4HANA Cloud to Central Finance;1W4
+31;Database and Data Management;Workforce Enablement;1FD
+32;Finance;Accounting and Financial Close;J58
+33;Finance;Accounting and Financial Close ? Group Ledger IFRS;1GA
+34;Finance;Accounting Enhancements for Banking;5NU
+35;Finance;Accounting Enhancements for Insurance;78J
+36;Finance;Accounts Payable;J60
+37;Finance;Accounts Receivable;J59
+38;Finance;Actual Costing;33Q
+39;Finance;Advanced Bank Statement Automation;4X8
+40;Finance;Asset Accounting;J62
+41;Finance;Asset Accounting ? Additional Depreciation Keys for Local GAAPs;6VB
+42;Finance;Asset Accounting ? Group Ledger IFRS;1GB
+43;Finance;Asset Under Construction;BFH
+44;Finance;Asset Under Construction ? Group Ledger IFRS;1GF
+45;Finance;Automated Invoice Settlement;2LH
+46;Finance;Automatic Market Rates Management;1S4
+47;Finance;Automotive Supply to Customer ? Inventory Management;55F
+48;Finance;Bank Integration with File Interface;1EG
+49;Finance;Basic Bank Account Management;BFA
+50;Finance;Basic Cash Operations;BFB
+51;Finance;Basic Credit Management;BD6
+52;Finance;Bill of Exchange;1WQ
+53;Finance;Cash Journal;1GO
+54;Finance;Classification for Customs Tariff Number and Commodity Code;2U3
+55;Finance;Compliance Formats ? Support Preparation;1J2
+56;Finance;Contract Accounting ? Cash Application;47I
+57;Finance;Contract Accounting ? Company Initiated Payments;2DP
+58;Finance;Contract Accounting ? Contract-Based Revenue Recognition;3L3
+59;Finance;Contract Accounting ? Customer Initiated Payments;2BI
+60;Finance;Contract Accounting ? Daily and Monthly Closing;2BK
+61;Finance;Contract Accounting ? External Tax Audit and Compliance Reporting;2SJ
+62;Finance;Contract Accounting ? Group Ledger IFRS;33X
+63;Finance;Contract Accounting ? Integration with Sales Documents;43Y
+64;Finance;Contract Accounting ? Master Data and Basic Functions;2AR
+65;Finance;Contract Accounting ? Open Item Management;2UJ
+66;Finance;Contract-Based Revenue Recognition ? IFRS;3KK
+67;Finance;Convergent Invoicing ? Cost Handling for Subscriptions and Usage;6WD
+68;Finance;Convergent Invoicing ? Intercompany Settlement;6WC
+69;Finance;Convergent Invoicing ? Invoice Correction Processing;2BE
+70;Finance;Convergent Invoicing ? Invoice Creation for Usage and Service;2BG
+71;Finance;Convergent Invoicing ? Management and Rating of Consumption Items;3DX
+72;Finance;Convergent Invoicing ? Recurring and One-Off Items;2T3
+73;Finance;Convergent Invoicing ? Revenue Sharing and Partner Settlement;42L
+74;Finance;Credit Agency Integration;1RY
+75;Finance;Customer Payments;1S0
+76;Finance;Digital Payments;1S2
+77;Finance;Direct Debit;19M
+78;Finance;Embargo Control;1WC
+79;Finance;Engineer Products and Systems ? Project with Production;6GD
+80;Finance;Event-Based Production Cost Posting;3F0
+81;Finance;Event-Based Revenue Recognition ? Project-Based Sales;4GQ
+82;Finance;Event-Based Revenue Recognition ? Project-Based Sales ? IFRS;4GR
+83;Finance;Event-Based Revenue Recognition ? Project-Based Services;1IL
+84;Finance;Event-Based Revenue Recognition ? Project-Based Services ? IFRS;1P0
+85;Finance;Event-Based Revenue Recognition ? Sell from Stock;1K2
+86;Finance;Event-Based Revenue Recognition ? Sell from Stock ? IFRS;33M
+87;Finance;Event-Based Revenue Recognition ? Service Documents;3M3
+88;Finance;Event-Based Revenue Recognition ? Service Documents ? IFRS;3M4
+89;Finance;Event-Based Revenue Recognition ? Subscription Billing;5DQ
+90;Finance;Event-Based Revenue Recognition ? Subscription Billing ? IFRS;5DR
+91;Finance;External Customer Payments;2M0
+92;Finance;External Digital Payments;2LZ
+93;Finance;External Tax Audit;2OO
+94;Finance;External Tax Calculation;4Q2
+95;Finance;Financial Plan Data Upload from File;1HB
+96;Finance;Financial Planning and Analysis;2FM
+97;Finance;General Ledger Allocation Cycle;1GI
+98;Finance;Group Reporting ? Financial Consolidation;1SG
+99;Finance;Integration of Payment Advice with Buyers and Suppliers;2MB
+100;Finance;Intercompany Reconciliation Process;40Y
+101;Finance;Intrastat Processing;BDT
+102;Finance;Inventory Valuation for Year-End Closing;BEJ
+103;Finance;Legal Control;1W8
+104;Finance;Managing Material Price Changes and Inventory Values;1ZT
+105;Finance;Margin Analysis;J55
+106;Finance;Monitoring of Goods and Invoice Receipts;2V7
+107;Finance;Overhead Cost Accounting;J54
+108;Finance;Period-End Closing ? Maintenance Orders;BF7
+109;Finance;Period-End Closing ? Projects;BNA
+110;Finance;Predictive Accounting for Sales Orders;2FD
+111;Finance;Predictive Accounting for Service Contract Management;4V7
+112;Finance;Predictive Accounting for Travel and Expense Management;4Q0
+113;Finance;Predictive Commitments Management;2I3
+114;Finance;Produce and Sell Standard Products ? Inventory Management;54U
+115;Finance;Product Cost Related Master Data Changes ? Consumer Products;61W
+116;Finance;Product Footprint Management;5IM
+117;Finance;Production Capacity Evaluation and Leveling ? Consumer Products;5OI
+118;Finance;Project Control ? Finance;1NT
+119;Finance;Project Control ? Sales;4I9
+120;Finance;Provisioning of Overdue Receivables;2PD
+121;Finance;Purchase Order Accruals;2VB
+122;Finance;Restricted Party Screening with SAP Watch List Screening;1WE
+123;Finance;Royalties Settlement for Sales;55I
+124;Finance;SAP Fiori Analytical Apps for Asset Accounting in Finance;2QY
+125;Finance;SAP Fiori Analytical Apps for Contract Accounting Manager;2KH
+126;Finance;SAP Fiori Analytical Apps for Convergent Invoicing Specialist;2KF
+127;Finance;SAP Fiori Analytical Apps for Financial Accounting;2JB
+128;Finance;SAP Fiori Analytical Apps for G/L Accounting in Finance;BGC
+129;Finance;Service Entry Sheet Based Accruals;63L
+130;Finance;Standard Cost Calculation;BEG
+131;Finance;Statistical Sales Conditions;34B
+132;Finance;Subsidiary Integration of SAP S/4HANA Cloud to Central Finance;1W4
+133;Finance;Supplier Financing;4AV
+134;Finance;Travel Expense Processing with SAP Concur;1M1
+135;Finance;Universal Allocation;2QL
+136;Finance;VAT Tax Calculation and Reporting for Belgium;5IS
+137;Finance;VAT Tax Calculation and Reporting for Czech Republic;5Z2
+138;Finance;VAT Tax Calculation and Reporting for Germany;55U
+139;Finance;VAT Tax Calculation and Reporting for South Africa;5Z0
+140;Finance;VAT Tax Calculation and Reporting for Sweden;5Z1
+141;Human Resources;Core HR with SAP SuccessFactors Employee Central;JB1
+142;Human Resources;Payroll Processing with SAP ERP HCM Payroll;3UP
+143;Human Resources;Payroll Processing with SAP SuccessFactors Employee Central Payroll;1NL
+144;Human Resources;Time Recording;1Q4
+145;Human Resources;Time Recording ? Project-Based Services;J12
+146;Human Resources;Workforce Enablement;1FD
+147;IT Management;Output Management;1LQ
+148;Manufacturing;Automotive Supply to Customer ? Inventory Management;55F
+149;Manufacturing;Batch Derivation ? Consumer Products;77G
+150;Manufacturing;Batch Management;BLF
+151;Manufacturing;Demand-Driven Buffer Level Management;1Y2
+152;Manufacturing;Demand-Driven Replenishment Planning and Execution;2QI
+153;Manufacturing;Enable Manufacturing Subsidiary to Handle Assembly for Headquarter;2WL
+154;Manufacturing;Engineer Products and Systems ? Project with Production;6GD
+155;Manufacturing;From Planning to Fulfillment ? Consumer Products;6AA
+156;Manufacturing;Inbound Storage Tank Management ? Process Manufacturing;3UK
+157;Manufacturing;Just-In-Time Supply to Customer;2EM
+158;Manufacturing;Just-In-Time Supply to Customer with Delivery Confirmation;53X
+159;Manufacturing;Make-to-Order Production ? Finished Goods Sales and Final Assembly;BJE
+160;Manufacturing;Make-to-Order Production ? Process Manufacturing;3OK
+161;Manufacturing;Make-to-Order Production ? Semifinished Goods Planning and Assembly;1BM
+162;Manufacturing;Make-to-Stock Production ? Discrete Manufacturing;BJ5
+163;Manufacturing;Make-to-Stock Production ? Repetitive Manufacturing;BJH
+164;Manufacturing;Make-to-Stock with Co- and By-Products ? Process Manufacturing;3L7
+165;Manufacturing;Make-to-Stock with Silo Material ? Process Manufacturing;3UL
+166;Manufacturing;Make-to-Stock ? Process Manufacturing Based on Process Order;BJ8
+167;Manufacturing;Make-to-Stock ? Process Manufacturing Based on Production Order;2UG
+168;Manufacturing;Material Replenishment with Kanban ? External Procurement;1,00E+03
+169;Manufacturing;Material Replenishment with Kanban ? In-House Production;4B3
+170;Manufacturing;Material Replenishment with Kanban ? Stock Transfer;4B4
+171;Manufacturing;Material Requirements Planning;J44
+172;Manufacturing;Nonconformance Management;2QN
+173;Manufacturing;Planning and Production in Other Plant ? Consumer Products;7DN
+174;Manufacturing;Predictive Analytics Model Training ? Supply Chain;20N
+175;Manufacturing;Predictive Material and Resource Planning;4B5
+176;Manufacturing;Produce and Sell Standard Products ? Inventory Management;54U
+177;Manufacturing;Product Cost Related Master Data Changes ? Consumer Products;61W
+178;Manufacturing;Production Capacity Evaluation;31L
+179;Manufacturing;Production Capacity Evaluation and Leveling ? Consumer Products;5OI
+180;Manufacturing;Production Capacity Leveling;3LQ
+181;Manufacturing;Production Operations with Manufacturing Execution System;1Y5
+182;Manufacturing;Production Order Processing with Third-Party Warehouse Management;2RU
+183;Manufacturing;Production Subcontracting ? External Processing;BJK
+184;Manufacturing;Quality Management for Complaints Against Suppliers;2F9
+185;Manufacturing;Quality Management for Complaints from Customers;2FA
+186;Manufacturing;Quality Management in Discrete Manufacturing;1,00E+01
+187;Manufacturing;Quality Management in Discrete Manufacturing ? Consumer Products;5HK
+188;Manufacturing;Quality Management in Procurement;1FM
+189;Manufacturing;Quality Management in Sales;1MP
+190;Manufacturing;Quality Management in Stock Handling;1MR
+191;Manufacturing;Quality Management of Internal Problems;2QP
+192;Manufacturing;Rework Processing ? Stock-Manufactured Material;BJN
+193;Manufacturing;Rework Processing ? Work-in-Process;BJQ
+194;Manufacturing;Rework with Quality Management ? Consumer Products;6A9
+195;Manufacturing;SAP Fiori Analytical Apps for Production Planning;2JD
+196;Manufacturing;SAP Fiori Analytical Apps for Quality Management;2V0
+197;Manufacturing;Serial Number Management in Logistics;BLL
+198;Manufacturing;Subcontracting;BMY
+199;Manufacturing;Subcontracting ? Consumer Products;5W4
+200;Manufacturing;Subsidiary as Production Unit and Internal Supplier to Headquarters;21T
+201;Manufacturing;Supply Chain Automation with SAP Business Network;5I2
+202;Manufacturing;Tank Trailer Filling with Residuals;42N
+203;Manufacturing;Third-Party Shop Floor Execution ? Discrete Industry;3W4
+204;Manufacturing;Third-Party Shop Floor Execution ? Process Industry;3W3
+205;No LoB Assignment;Analytics for Production Unit ? Plan/Actual Production Cost;2QW
+206;No LoB Assignment;Analytics for Sales ? Central Stock with Returns;2QS
+207;No LoB Assignment;Analytics ? Purchase Order Visibility and Procurement Spend;2QU
+208;No LoB Assignment;Change Manufacturing Bill of Material for Production;3LO
+209;No LoB Assignment;Collaborative Manufacturing with SAP Digital Manufacturing Cloud;1NX
+210;No LoB Assignment;Customer Project Analysis;BGI
+211;No LoB Assignment;Do you run business in a foreign country?;5RP
+212;No LoB Assignment;Handover of Product Information to SAP Asset Intelligence Network;2WK
+213;No LoB Assignment;Intercompany Asset Transfer Within Same Country;1IH
+214;No LoB Assignment;Mass Change Manufacturing Bill of Material for Production;3LP
+215;No LoB Assignment;Master Data Catalog for SAP S/4HANA Cloud;1I5
+216;No LoB Assignment;Predictive Analytics Model Training ? Finance;30K
+217;No LoB Assignment;Predictive Analytics Model Training ? R&D/Engineering;2Y7
+218;No LoB Assignment;Preferred Supplier List;4RI
+219;No LoB Assignment;Requirements Driven Development;2G4
+220;No LoB Assignment;SAP Fiori Analytical Apps for Inventory and Warehouse Management;BGG
+221;No LoB Assignment;SAP S/4HANA Cloud Integration with SAP Marketing Cloud ? retired;1UG
+222;No LoB Assignment;Utilization Analysis;BGJ
+223;R&D / Engineering;Bill of Material Management;64F
+224;R&D / Engineering;Collaborative Project Management;6JN
+225;R&D / Engineering;Engineer Products and Systems ? Project with Production;6GD
+226;R&D / Engineering;Manage Documents;22P
+227;R&D / Engineering;PLM Integration with SAP Integrated Product Development;6U3
+228;R&D / Engineering;Product Change Management with Change Records;64E
+229;R&D / Engineering;Project Control ? Capital Projects;35F
+230;R&D / Engineering;Project Control ? Finance;1NT
+231;R&D / Engineering;Project Control ? Research and Development Projects;35E
+232;R&D / Engineering;Project Control ? Resourcing and Procurement;4RF
+233;R&D / Engineering;Project Control ? Sales;4I9
+234;R&D / Engineering;Project Review;1YF
+235;Sales;Advanced Intercompany Sales;5D2
+236;Sales;Automation of Order-to-Invoice with SAP Business Network;4A1
+237;Sales;Automotive Supply to Customer ? Inventory Management;55F
+238;Sales;Basic Business Process Scheduling;6JM
+239;Sales;Complaint Handling;7BG
+240;Sales;Credit Memo Processing;1EZ
+241;Sales;Customer Consignment;1IU
+242;Sales;Customer Returns;BKP
+243;Sales;Customer Returns for Non-Stock and Service Materials;3TE
+244;Sales;Customer Returns for Sales Kits;5CX
+245;Sales;Customer Returns Involving Supplier by Message Exchange;3QD
+246;Sales;Customer Returns Management ? Consumer Products;61V
+247;Sales;Customer Returns with Direct Shipment from Customer to Supplier;1Z3
+248;Sales;Debit Memo Processing;1F1
+249;Sales;Delivery Processing Without Order Reference;1MI
+250;Sales;Engineer Products and Systems ? Project with Production;6GD
+251;Sales;External Billing;1Z6
+252;Sales;Free Goods Processing;BKA
+253;Sales;Free of Charge Delivery;BDA
+254;Sales;From Planning to Fulfillment ? Consumer Products;6AA
+255;Sales;Integration of Sales with External Buyers;2EL
+256;Sales;Intercompany Sales Order Processing ? Domestic;1HO
+257;Sales;Invoice Correction Process with Credit Memo;BKL
+258;Sales;Invoice Correction Process with Debit Memo;BDQ
+259;Sales;Lean Customer Returns;BDD
+260;Sales;Logistics with Third-Party Warehouse Management;1ZQ
+261;Sales;Omnichannel Convergent Billing;1MC
+262;Sales;Opportunity to Order with SAP Sales Cloud Version 2;6KO
+263;Sales;Opportunity-to-Order with SAP Cloud for Customer;1VP
+264;Sales;Planning and Production in Other Plant ? Consumer Products;7DN
+265;Sales;Planning Apps for Sales;1O0
+266;Sales;Predictive Analytics Model Training ? Sales;2YJ
+267;Sales;Produce and Sell Standard Products ? Inventory Management;54U
+268;Sales;Returnables Processing;BDW
+269;Sales;Sale of Services;2EQ
+270;Sales;Sales Commissions ? External Sales Representative;2TT
+271;Sales;Sales Contract Management;I9I
+272;Sales;Sales Inquiry;1IQ
+273;Sales;Sales of Non-Stock Item with Order-Specific Procurement;BDN
+274;Sales;Sales Order Automation;73P
+275;Sales;Sales Order Entry with One-Time Customer;BDH
+276;Sales;Sales Order Fulfillment Monitoring and Operations;BKK
+277;Sales;Sales Order Processing for Non-Stock Material;2ET
+278;Sales;Sales Order Processing for Sales Kits;31Q
+279;Sales;Sales Order Processing with Customer Down Payment;BKJ
+280;Sales;Sales Order Processing with Invoice List and Collective Billing;BKZ
+281;Sales;Sales Order Processing ? SEPA Direct Debit Handling;BKX
+282;Sales;Sales Processing using Third-Party with Shipping Notification;BD3
+283;Sales;Sales Processing Using Third-Party Without Shipping Notification;BDK
+284;Sales;Sales Quotation;BDG
+285;Sales;Sales Rebate Processing;1B6
+286;Sales;Sales Scheduling Agreement with Consignment;4LZ
+287;Sales;Sales Scheduling Agreements;3NR
+288;Sales;SAP Fiori Analytical Apps for Sales;1BS
+289;Sales;Self-Billing;4H2
+290;Sales;Sell from Stock;BD9
+291;Sales;Solution Order Management;4GT
+292;Sales;Solution Order Quotation Management with SAP CPQ;6BV
+293;Sales;Subscription Management with Sales Billing;57Z
+294;Service;Credit and Debit Memo Processing for Service Management;4GG
+295;Service;In-House Repair;3XK
+296;Service;Intercompany Billing for Service Documents;53Y
+297;Service;Procurement for Service Management;3NI
+298;Service;Recurring Services;4X5
+299;Service;Service Contract Management;3MO
+300;Service;Service Monitoring and Analytics;43B
+301;Service;Service Order Management and Monitoring;3D2
+302;Service;Service Quotation;4GA
+303;Service;Warranty Claim Management ? Customer Claim Processing;63Y
+304;Service;Warranty Claim Management ? Supplier Recovery Processing;5HR
+305;Solutions for Specific Industries;Customer Project Management ? Project-Based Services;J11
+306;Solutions for Specific Industries;Event-Based Revenue Recognition ? Project-Based Services;1IL
+307;Solutions for Specific Industries;Event-Based Revenue Recognition ? Project-Based Services ? IFRS;1P0
+308;Solutions for Specific Industries;Internal Project Management ? Project-Based Services;1A8
+309;Solutions for Specific Industries;Project Billing ? Project-Based Services;4,00E+09
+310;Solutions for Specific Industries;Resource Management for Projects;6JO
+311;Solutions for Specific Industries;Sales Order Processing ? Project-Based Services;J14
+312;Solutions for Specific Industries;Service and Material Procurement ? Project-Based Services;J13
+313;Sourcing and Procurement;Advanced Intercompany Stock Transfer;5HP
+314;Sourcing and Procurement;Automated Invoice Settlement;2LH
+315;Sourcing and Procurement;Automated Purchase-to-Pay with SAP Ariba Commerce Automation;J82
+316;Sourcing and Procurement;Automation of Source-to-Pay with SAP Business Network;42K
+317;Sourcing and Procurement;Automotive Supply to Customer ? Inventory Management;55F
+318;Sourcing and Procurement;Batch Derivation ? Consumer Products;77G
+319;Sourcing and Procurement;Batch Management;BLF
+320;Sourcing and Procurement;Complementary Procurement Functions;2TW
+321;Sourcing and Procurement;Consumable Purchasing;BNX
+322;Sourcing and Procurement;Contract Management with SAP Ariba Contracts;4AZ
+323;Sourcing and Procurement;Cross-Company Purchasing Organization;2R3
+324;Sourcing and Procurement;Direct Procurement with Inbound Delivery;2TX
+325;Sourcing and Procurement;Engineer Products and Systems ? Project with Production;6GD
+326;Sourcing and Procurement;External Workforce Procurement via SAP Fieldglass;22K
+327;Sourcing and Procurement;From Planning to Fulfillment ? Consumer Products;6AA
+328;Sourcing and Procurement;Guided Buying Capability with SAP Ariba Buying;2NV
+329;Sourcing and Procurement;Integration of Procurement with External Suppliers;2EJ
+330;Sourcing and Procurement;Integration to Icertis for Contract Assembly;6V2
+331;Sourcing and Procurement;Invoice Processing with SAP Ariba Central Invoice Management;4N6
+332;Sourcing and Procurement;Logistics with Third-Party Warehouse Management;1ZQ
+333;Sourcing and Procurement;Prediction of Delivery Date for Purchase Order Items;3FY
+334;Sourcing and Procurement;Predictive Analytics for Purchase Contract Quantity Consumption;1QR
+335;Sourcing and Procurement;Procurement of Direct Materials;J45
+336;Sourcing and Procurement;Procurement of Pipeline Materials;41F
+337;Sourcing and Procurement;Procurement of Production Components ? Consumer Products;5W3
+338;Sourcing and Procurement;Procurement of Services;22Z
+339;Sourcing and Procurement;Produce and Sell Standard Products ? Inventory Management;54U
+340;Sourcing and Procurement;Purchase Contract;BMD
+341;Sourcing and Procurement;Purchasing Rebate Processing;2R7
+342;Sourcing and Procurement;Quality Management in Discrete Manufacturing ? Consumer Products;5HK
+343;Sourcing and Procurement;Real-Time Reporting and Monitoring for Procurement;1JI
+344;Sourcing and Procurement;Request for Price;1XF
+345;Sourcing and Procurement;Requisitioning;18J
+346;Sourcing and Procurement;SAP Ariba Buying;4AI
+347;Sourcing and Procurement;Scheduling Agreement for Consignment Procurement;2NY
+348;Sourcing and Procurement;Scheduling Agreement for Subcontracting Procurement;2NX
+349;Sourcing and Procurement;Scheduling Agreements in Procurement;BMR
+350;Sourcing and Procurement;Serial Number Management in Logistics;BLL
+351;Sourcing and Procurement;Service Procurement with SAP Business Network and SAP Fieldglass;4R2
+352;Sourcing and Procurement;Subcontracting;BMY
+353;Sourcing and Procurement;Subcontracting ? Consumer Products;5W4
+354;Sourcing and Procurement;Supplier Classification and Segmentation;19E
+355;Sourcing and Procurement;Supplier Consignment;2LG
+356;Sourcing and Procurement;Supplier Evaluation and Performance Monitoring;SL4
+357;Sourcing and Procurement;Supply Chain Automation with SAP Business Network;5I2
+358;Sourcing and Procurement;Vendor Performance ? Consumer Products;6A6
+359;Supply Chain;Advanced Intercompany Stock Transfer;5HP
+360;Supply Chain;Automated Invoice Settlement;2LH
+361;Supply Chain;Automated Purchase-to-Pay with SAP Ariba Commerce Automation;J82
+362;Supply Chain;Automotive Supply to Customer ? Inventory Management;55F
+363;Supply Chain;Basic Available-to-Promise Processing;2LN
+364;Supply Chain;Basic Business Process Scheduling;6JM
+365;Supply Chain;Batch Derivation ? Consumer Products;77G
+366;Supply Chain;Batch Management;BLF
+367;Supply Chain;Complementary Procurement Functions;2TW
+368;Supply Chain;Core Inventory Management;BMC
+369;Supply Chain;Determination of Geocoordinates, Distances and Durations;46P
+370;Supply Chain;Direct Procurement with Inbound Delivery;2TX
+371;Supply Chain;Engineer Products and Systems ? Project with Production;6GD
+372;Supply Chain;External Transportation Planning;6W1
+373;Supply Chain;Freight Settlement;6W4
+374;Supply Chain;Handling Unit Management;4MM
+375;Supply Chain;Logistics with Third-Party Warehouse Management;1ZQ
+376;Supply Chain;Manual Transportation Planning;6W2
+377;Supply Chain;Physical Inventory ? Cycle Counting;4LU
+378;Supply Chain;Physical Inventory ? Inventory Count and Adjustment;BML
+379;Supply Chain;Planning and Production in Other Plant ? Consumer Products;7DN
+380;Supply Chain;Procurement of Direct Materials;J45
+381;Supply Chain;Produce and Sell Standard Products ? Inventory Management;54U
+382;Supply Chain;Production Order Processing with Third-Party Warehouse Management;2RU
+383;Supply Chain;Quality Management for Complaints Against Suppliers;2F9
+384;Supply Chain;Quality Management for Complaints from Customers;2FA
+385;Supply Chain;Quality Management in Procurement;1FM
+386;Supply Chain;Quality Management in Sales;1MP
+387;Supply Chain;Quality Management in Stock Handling;1MR
+388;Supply Chain;Quality Management in Warehousing;3M0
+389;Supply Chain;Replenishment in Warehousing;4A2
+390;Supply Chain;Return to Supplier;BMK
+391;Supply Chain;Serial Number Management in Logistics;BLL
+392;Supply Chain;Subcontracting;BMY
+393;Supply Chain;Subcontracting ? Consumer Products;5W4
+394;Supply Chain;Supplier Consignment;2LG
+395;Supply Chain;Transportation Execution;6W3
+396;Supply Chain;Warehouse Ad Hoc Goods Issue;3BT
+397;Supply Chain;Warehouse Advanced Production Integration;6NI
+398;Supply Chain;Warehouse Inbound Processing;3BR
+399;Supply Chain;Warehouse Inbound Processing with Synchronous Goods Receipt;5HN
+400;Supply Chain;Warehouse Internal Inspections;5OK
+401;Supply Chain;Warehouse Internal Repacking;3BW
+402;Supply Chain;Warehouse Kanban Supply into Production;3VT
+403;Supply Chain;Warehouse Outbound Processing;3BS
+404;Supply Chain;Warehouse Physical Inventory;3BX
+405;Supply Chain;Warehouse Posting Changes;3BU
+406;Supply Chain;Warehouse Production Integration;3DV
+407;Supply Chain;Warehouse Production Integration with Synchronous Goods Receipt;5HO

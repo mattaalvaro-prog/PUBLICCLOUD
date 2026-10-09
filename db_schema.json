@@ -1,0 +1,2024 @@
+{
+    "tasks": [
+        {
+            "col": "id",
+            "def": "gen_random_uuid()",
+            "null": "NO",
+            "type": "uuid"
+        },
+        {
+            "col": "project_id",
+            "def": null,
+            "null": "YES",
+            "type": "bigint"
+        },
+        {
+            "col": "title",
+            "def": null,
+            "null": "NO",
+            "type": "text"
+        },
+        {
+            "col": "description",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "status",
+            "def": "'OPEN'::text",
+            "null": "NO",
+            "type": "text"
+        },
+        {
+            "col": "phase",
+            "def": "'Discover'::text",
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "assigned_to",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "color",
+            "def": "'#3498db'::text",
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "priority",
+            "def": "'Medium'::text",
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "due_date",
+            "def": null,
+            "null": "YES",
+            "type": "date"
+        },
+        {
+            "col": "created_at",
+            "def": "now()",
+            "null": "YES",
+            "type": "timestamp with time zone"
+        },
+        {
+            "col": "updated_at",
+            "def": "now()",
+            "null": "YES",
+            "type": "timestamp with time zone"
+        }
+    ],
+    "users": [
+        {
+            "col": "id",
+            "def": "nextval('users_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "email",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        },
+        {
+            "col": "password",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        },
+        {
+            "col": "first_name",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "last_name",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "role",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "user_type",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "cliente",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "nombre_proyecto",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "direccion",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "telefono",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "profile_image",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "created_at",
+            "def": "CURRENT_TIMESTAMP",
+            "null": "YES",
+            "type": "timestamp without time zone"
+        },
+        {
+            "col": "status",
+            "def": "'active'::character varying",
+            "null": "YES",
+            "type": "character varying"
+        }
+    ],
+    "clients": [
+        {
+            "col": "id",
+            "def": "nextval('clients_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "nombre_cliente",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        },
+        {
+            "col": "abrev",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        },
+        {
+            "col": "contacto",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "mail",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "tel",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "created_at",
+            "def": "CURRENT_TIMESTAMP",
+            "null": "YES",
+            "type": "timestamp without time zone"
+        },
+        {
+            "col": "abreviatura_3",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        }
+    ],
+    "projects": [
+        {
+            "col": "id",
+            "def": "nextval('projects_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "project_code",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        },
+        {
+            "col": "name",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        },
+        {
+            "col": "client_id",
+            "def": null,
+            "null": "YES",
+            "type": "integer"
+        },
+        {
+            "col": "phase",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "status",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "created_at",
+            "def": "CURRENT_TIMESTAMP",
+            "null": "YES",
+            "type": "timestamp without time zone"
+        }
+    ],
+    "workshops": [
+        {
+            "col": "id",
+            "def": "nextval('workshops_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "workshop_code",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        },
+        {
+            "col": "lob",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "description",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        }
+    ],
+    "documentos": [
+        {
+            "col": "id",
+            "def": "nextval('documentos_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "cliente",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "proyecto",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "id_fase",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "tipo_documento",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "numerador",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "url",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "id_lob",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "nombre_taller",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "fecha",
+            "def": "CURRENT_DATE",
+            "null": "YES",
+            "type": "date"
+        },
+        {
+            "col": "created_at",
+            "def": "CURRENT_TIMESTAMP",
+            "null": "YES",
+            "type": "timestamp without time zone"
+        }
+    ],
+    "incidencias": [
+        {
+            "col": "id",
+            "def": "nextval('incidencias_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "numero_incidencia",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        },
+        {
+            "col": "cliente_id",
+            "def": null,
+            "null": "YES",
+            "type": "integer"
+        },
+        {
+            "col": "proyecto_id",
+            "def": null,
+            "null": "YES",
+            "type": "integer"
+        },
+        {
+            "col": "fecha_incid",
+            "def": "CURRENT_DATE",
+            "null": "YES",
+            "type": "date"
+        },
+        {
+            "col": "resp_cliente",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "tipo",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "tipo_altim",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "lob",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "descripcion",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "error_mensaje",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "observaciones",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "prioridad",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "comentarios",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "sistema",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "resp_altim",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "estado",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "fecha_entrega",
+            "def": null,
+            "null": "YES",
+            "type": "date"
+        },
+        {
+            "col": "fecha_cierre",
+            "def": null,
+            "null": "YES",
+            "type": "date"
+        },
+        {
+            "col": "comentarios_finales",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "responsable",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "created_at",
+            "def": "CURRENT_TIMESTAMP",
+            "null": "YES",
+            "type": "timestamp with time zone"
+        }
+    ],
+    "master_bpml": [
+        {
+            "col": "id",
+            "def": "nextval('master_bpml_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "bpml_id",
+            "def": null,
+            "null": "NO",
+            "type": "text"
+        },
+        {
+            "col": "id_e2e",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "negocio",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "grupo_proceso_l2",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "nombre_proceso_l3",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "id_bp",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "nombre_scope_item_sap_best_practice",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "estructura_organizativa_objetivo",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "evento_desencadenante",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "evento_final_resultado",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "rol_negocio_principal",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "objetos_datos_clave",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "reglas_negocio_clave",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "integraciones_estandar",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "controles_clave",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "kpis_clave",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "priority",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "sprint",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "estado_ajuste_fpg",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "ids_referencia_gap",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "notas_enlace_evidencia",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "grupo_proceso_l1",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "nombre_proceso_l4",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "id_proyecto",
+            "def": null,
+            "null": "NO",
+            "type": "text"
+        },
+        {
+            "col": "seleccionado",
+            "def": "false",
+            "null": "YES",
+            "type": "boolean"
+        }
+    ],
+    "master_lobs": [
+        {
+            "col": "id",
+            "def": "nextval('master_lobs_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "id_lob",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        },
+        {
+            "col": "id_idioma",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        }
+    ],
+    "master_uats": [
+        {
+            "col": "id",
+            "def": "nextval('master_uats_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "id_lob",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "id_casop",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "id_bp",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "proceso_scope_item",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "escenario",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "actividades_proceso",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "precondiciones",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "pasos_detallados",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "datos_prueba",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "resultado_esperado",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "resultado_obtenido",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "estado_ok_nok",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "defecto_asociado",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "tipo_prueba",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "rol_perfil_responsable",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "id_requisito_historia",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "raci",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "project_id",
+            "def": null,
+            "null": "YES",
+            "type": "integer"
+        }
+    ],
+    "public_news": [
+        {
+            "col": "id",
+            "def": "nextval('public_news_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "title",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        },
+        {
+            "col": "description",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "url",
+            "def": null,
+            "null": "NO",
+            "type": "text"
+        },
+        {
+            "col": "image_url",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "is_active",
+            "def": "true",
+            "null": "YES",
+            "type": "boolean"
+        },
+        {
+            "col": "order_priority",
+            "def": "0",
+            "null": "YES",
+            "type": "integer"
+        },
+        {
+            "col": "created_at",
+            "def": "CURRENT_TIMESTAMP",
+            "null": "YES",
+            "type": "timestamp with time zone"
+        }
+    ],
+    "cliente_proy": [
+        {
+            "col": "id",
+            "def": "nextval('cliente_proy_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "client_id",
+            "def": null,
+            "null": "YES",
+            "type": "integer"
+        },
+        {
+            "col": "id_proyecto",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        },
+        {
+            "col": "descripcion_prj",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "sharepoint_url",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "created_at",
+            "def": "CURRENT_TIMESTAMP",
+            "null": "YES",
+            "type": "timestamp without time zone"
+        },
+        {
+            "col": "go_live_date",
+            "def": null,
+            "null": "YES",
+            "type": "date"
+        },
+        {
+            "col": "support_start_date",
+            "def": null,
+            "null": "YES",
+            "type": "date"
+        },
+        {
+            "col": "support_end_date",
+            "def": null,
+            "null": "YES",
+            "type": "date"
+        }
+    ],
+    "general_bpml": [
+        {
+            "col": "bpml_id",
+            "def": null,
+            "null": "NO",
+            "type": "text"
+        },
+        {
+            "col": "id_e2e",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "negocio",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "grupo_proceso_l1",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "grupo_proceso_l2",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "nombre_proceso_l3",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "id_bp",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "nombre_scope_item_sap_best_practice",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "nombre_proceso_l4",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "estructura_organizativa_objetivo",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "evento_desencadenante",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "evento_final_resultado",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "rol_negocio_principal",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "objetos_datos_clave",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "reglas_negocio_clave",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "integraciones_estandar",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "controles_clave",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "kpis_clave",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "seleccionado",
+            "def": "false",
+            "null": "YES",
+            "type": "boolean"
+        }
+    ],
+    "general_uats": [
+        {
+            "col": "id",
+            "def": "nextval('general_uats_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "id_lob",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "id_casop",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "id_bp",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "proceso_scope_item",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "escenario",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "actividades_proceso",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "precondiciones",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "pasos_detallados",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "datos_prueba",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "resultado_esperado",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        }
+    ],
+    "master_fases": [
+        {
+            "col": "id",
+            "def": "nextval('master_fases_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "fase_name",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        },
+        {
+            "col": "fecha_inicio",
+            "def": null,
+            "null": "YES",
+            "type": "date"
+        },
+        {
+            "col": "fecha_fin",
+            "def": null,
+            "null": "YES",
+            "type": "date"
+        },
+        {
+            "col": "nueva_fecha_inicio",
+            "def": null,
+            "null": "YES",
+            "type": "date"
+        },
+        {
+            "col": "nueva_fecha_fin",
+            "def": null,
+            "null": "YES",
+            "type": "date"
+        }
+    ],
+    "master_roles": [
+        {
+            "col": "id",
+            "def": "nextval('master_roles_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "role_name",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        }
+    ],
+    "project_risks": [
+        {
+            "col": "id",
+            "def": "nextval('project_risks_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "project_id",
+            "def": null,
+            "null": "YES",
+            "type": "integer"
+        },
+        {
+            "col": "riesgo_identificado",
+            "def": null,
+            "null": "NO",
+            "type": "text"
+        },
+        {
+            "col": "causa",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "probabilidad",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "impacto",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "prioridad",
+            "def": "0",
+            "null": "YES",
+            "type": "integer"
+        },
+        {
+            "col": "estrategia_respuesta",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "plan_respuesta",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "estado",
+            "def": "'Abierto'::character varying",
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "comentarios",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "created_at",
+            "def": "CURRENT_TIMESTAMP",
+            "null": "YES",
+            "type": "timestamp without time zone"
+        }
+    ],
+    "system_config": [
+        {
+            "col": "id",
+            "def": "nextval('system_config_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "key_name",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        },
+        {
+            "col": "key_value",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "description",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "category",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "is_secret",
+            "def": "true",
+            "null": "YES",
+            "type": "boolean"
+        },
+        {
+            "col": "updated_at",
+            "def": "CURRENT_TIMESTAMP",
+            "null": "YES",
+            "type": "timestamp with time zone"
+        },
+        {
+            "col": "updated_by",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        }
+    ],
+    "task_comments": [
+        {
+            "col": "id",
+            "def": "gen_random_uuid()",
+            "null": "NO",
+            "type": "uuid"
+        },
+        {
+            "col": "task_id",
+            "def": null,
+            "null": "YES",
+            "type": "uuid"
+        },
+        {
+            "col": "user_email",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "comment",
+            "def": null,
+            "null": "NO",
+            "type": "text"
+        },
+        {
+            "col": "created_at",
+            "def": "now()",
+            "null": "YES",
+            "type": "timestamp with time zone"
+        }
+    ],
+    "project_phases": [
+        {
+            "col": "id",
+            "def": "nextval('project_phases_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "project_id",
+            "def": null,
+            "null": "YES",
+            "type": "integer"
+        },
+        {
+            "col": "phase_name",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        },
+        {
+            "col": "start_date",
+            "def": null,
+            "null": "YES",
+            "type": "date"
+        },
+        {
+            "col": "end_date",
+            "def": null,
+            "null": "YES",
+            "type": "date"
+        },
+        {
+            "col": "new_start_date",
+            "def": null,
+            "null": "YES",
+            "type": "date"
+        },
+        {
+            "col": "new_end_date",
+            "def": null,
+            "null": "YES",
+            "type": "date"
+        },
+        {
+            "col": "progress",
+            "def": "0",
+            "null": "YES",
+            "type": "integer"
+        },
+        {
+            "col": "comments",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "created_at",
+            "def": "CURRENT_TIMESTAMP",
+            "null": "YES",
+            "type": "timestamp without time zone"
+        }
+    ],
+    "requerimientos": [
+        {
+            "col": "id",
+            "def": null,
+            "null": "NO",
+            "type": "bigint"
+        },
+        {
+            "col": "project_id",
+            "def": null,
+            "null": "YES",
+            "type": "bigint"
+        },
+        {
+            "col": "title",
+            "def": null,
+            "null": "NO",
+            "type": "text"
+        },
+        {
+            "col": "description",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "phase",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "status",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "assigned_to",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "priority",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "due_date",
+            "def": null,
+            "null": "YES",
+            "type": "date"
+        },
+        {
+            "col": "color",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "updated_at",
+            "def": "CURRENT_TIMESTAMP",
+            "null": "YES",
+            "type": "timestamp with time zone"
+        },
+        {
+            "col": "created_at",
+            "def": "CURRENT_TIMESTAMP",
+            "null": "YES",
+            "type": "timestamp with time zone"
+        },
+        {
+            "col": "responsable",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        }
+    ],
+    "workshop_groups": [
+        {
+            "col": "id",
+            "def": "nextval('workshop_groups_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "project_id",
+            "def": null,
+            "null": "YES",
+            "type": "integer"
+        },
+        {
+            "col": "group_id",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        },
+        {
+            "col": "group_name",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "id_lob",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "is_active",
+            "def": "false",
+            "null": "YES",
+            "type": "boolean"
+        },
+        {
+            "col": "created_at",
+            "def": "CURRENT_TIMESTAMP",
+            "null": "YES",
+            "type": "timestamp without time zone"
+        }
+    ],
+    "role_permissions": [
+        {
+            "col": "id",
+            "def": "nextval('role_permissions_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "module_key",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        },
+        {
+            "col": "user_type",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        },
+        {
+            "col": "role_name",
+            "def": "'#'::character varying",
+            "null": "NO",
+            "type": "character varying"
+        },
+        {
+            "col": "can_view",
+            "def": "false",
+            "null": "YES",
+            "type": "boolean"
+        },
+        {
+            "col": "can_modify",
+            "def": "false",
+            "null": "YES",
+            "type": "boolean"
+        },
+        {
+            "col": "can_download",
+            "def": "false",
+            "null": "YES",
+            "type": "boolean"
+        },
+        {
+            "col": "can_attach",
+            "def": "false",
+            "null": "YES",
+            "type": "boolean"
+        },
+        {
+            "col": "is_invisible",
+            "def": "false",
+            "null": "YES",
+            "type": "boolean"
+        },
+        {
+            "col": "is_restricted",
+            "def": "false",
+            "null": "YES",
+            "type": "boolean"
+        },
+        {
+            "col": "has_no_access",
+            "def": "false",
+            "null": "YES",
+            "type": "boolean"
+        },
+        {
+            "col": "res_button",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "res_parte",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "created_at",
+            "def": "CURRENT_TIMESTAMP",
+            "null": "YES",
+            "type": "timestamp with time zone"
+        }
+    ],
+    "project_workshops": [
+        {
+            "col": "id",
+            "def": "nextval('project_workshops_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "project_id",
+            "def": null,
+            "null": "YES",
+            "type": "integer"
+        },
+        {
+            "col": "group_id",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        },
+        {
+            "col": "group_name",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "scheduled_date",
+            "def": null,
+            "null": "NO",
+            "type": "date"
+        },
+        {
+            "col": "color_idx",
+            "def": "0",
+            "null": "YES",
+            "type": "integer"
+        },
+        {
+            "col": "created_at",
+            "def": "CURRENT_TIMESTAMP",
+            "null": "YES",
+            "type": "timestamp without time zone"
+        }
+    ],
+    "incident_audit_logs": [
+        {
+            "col": "id",
+            "def": "nextval('incident_audit_logs_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "incident_id",
+            "def": null,
+            "null": "YES",
+            "type": "integer"
+        },
+        {
+            "col": "usuario_email",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "accion",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "campo_modificado",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "valor_anterior",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "valor_nuevo",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "timestamp",
+            "def": "CURRENT_TIMESTAMP",
+            "null": "YES",
+            "type": "timestamp with time zone"
+        }
+    ],
+    "General_questionarie": [
+        {
+            "col": "ID_Cuestionario",
+            "def": "nextval('\"General_questionarie_ID_Cuestionario_seq\"'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "Area",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "id_lob",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "PREGUNTA",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "Descripcion",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "Id_idioma",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        }
+    ],
+    "master_best_practice": [
+        {
+            "col": "id",
+            "def": "nextval('master_best_practice_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "id_lob",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        },
+        {
+            "col": "denominacion_bp",
+            "def": null,
+            "null": "NO",
+            "type": "text"
+        },
+        {
+            "col": "id_bp",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        }
+    ],
+    "master_project_types": [
+        {
+            "col": "id",
+            "def": "nextval('master_project_types_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "type_name",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        }
+    ],
+    "master_questionnaire": [
+        {
+            "col": "id",
+            "def": "nextval('master_questionnaire_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "lob_id",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "project_relevant",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "scope_ref",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "sap_id",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "sscui_reference",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "area",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "topic",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "topic_definition",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "question",
+            "def": null,
+            "null": "NO",
+            "type": "text"
+        },
+        {
+            "col": "level",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "solution",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "customers_response",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        }
+    ],
+    "user_client_relation": [
+        {
+            "col": "user_id",
+            "def": null,
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "client_id",
+            "def": null,
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "assigned_at",
+            "def": "CURRENT_TIMESTAMP",
+            "null": "YES",
+            "type": "timestamp without time zone"
+        }
+    ],
+    "workshop_group_items": [
+        {
+            "col": "id",
+            "def": "nextval('workshop_group_items_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "group_record_id",
+            "def": null,
+            "null": "YES",
+            "type": "integer"
+        },
+        {
+            "col": "bp_id",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "created_at",
+            "def": "CURRENT_TIMESTAMP",
+            "null": "YES",
+            "type": "timestamp without time zone"
+        }
+    ],
+    "api_credentials_vault": [
+        {
+            "col": "id",
+            "def": "nextval('api_credentials_vault_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "key_name",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        },
+        {
+            "col": "key_value",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "description",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        },
+        {
+            "col": "category",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "is_secret",
+            "def": "true",
+            "null": "YES",
+            "type": "boolean"
+        },
+        {
+            "col": "updated_at",
+            "def": "CURRENT_TIMESTAMP",
+            "null": "YES",
+            "type": "timestamp with time zone"
+        },
+        {
+            "col": "updated_by",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        }
+    ],
+    "project_notifications": [
+        {
+            "col": "id",
+            "def": null,
+            "null": "NO",
+            "type": "bigint"
+        },
+        {
+            "col": "project_id",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        },
+        {
+            "col": "text",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        },
+        {
+            "col": "document_name",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "url",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "user_email",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "created_at",
+            "def": "now()",
+            "null": "YES",
+            "type": "timestamp with time zone"
+        }
+    ],
+    "user_project_relation": [
+        {
+            "col": "user_id",
+            "def": null,
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "project_id",
+            "def": null,
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "assigned_at",
+            "def": "CURRENT_TIMESTAMP",
+            "null": "YES",
+            "type": "timestamp without time zone"
+        }
+    ],
+    "view_user_assignments": [
+        {
+            "col": "user_id",
+            "def": null,
+            "null": "YES",
+            "type": "integer"
+        },
+        {
+            "col": "user_email",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "client_id",
+            "def": null,
+            "null": "YES",
+            "type": "integer"
+        },
+        {
+            "col": "client_name",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "project_id",
+            "def": null,
+            "null": "YES",
+            "type": "integer"
+        },
+        {
+            "col": "project_code",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "project_name",
+            "def": null,
+            "null": "YES",
+            "type": "character varying"
+        },
+        {
+            "col": "assignment_type",
+            "def": null,
+            "null": "YES",
+            "type": "text"
+        }
+    ],
+    "master_jira_categories": [
+        {
+            "col": "id",
+            "def": "nextval('master_jira_categories_id_seq'::regclass)",
+            "null": "NO",
+            "type": "integer"
+        },
+        {
+            "col": "category_name",
+            "def": null,
+            "null": "NO",
+            "type": "character varying"
+        }
+    ]
+}
