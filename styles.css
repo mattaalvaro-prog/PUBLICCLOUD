@@ -123,6 +123,13 @@ body {
     color: var(--text-primary);
 }
 
+.btn-sm {
+    min-width: auto;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.78rem;
+    height: 28px;
+}
+
 /* Main Layout */
 .app-container {
     display: none;
@@ -2310,18 +2317,223 @@ body {
 }
 
 @media print {
-    .sidebar, .header, .help-sidebar-nav, .btn-back, .btn-link {
-        display: none !important;
+    @page {
+        size: auto;
+        margin: 12mm 10mm;
     }
+
+    /* 1. Reset root & layout containers to allow multi-page flow without clipping */
+    html, body {
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow: visible !important;
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+        position: static !important;
+        background: #ffffff !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .app-container {
+        display: block !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow: visible !important;
+        position: static !important;
+    }
+
     .main-content {
         padding: 0 !important;
+        margin: 0 !important;
+        display: block !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow: visible !important;
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+        position: static !important;
+        background: transparent !important;
     }
+
+    #module-content {
+        display: block !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow: visible !important;
+        position: static !important;
+    }
+
+    /* 2. Hide chrome, navigation and non-printable elements */
+    .sidebar, 
+    .header, 
+    .help-sidebar-nav, 
+    .btn-back, 
+    .btn-link, 
+    .no-print, 
+    .toggle-icon,
+    .modal-overlay,
+    .swal2-container,
+    .exp-exec-tabs,
+    .est-exec-tabs,
+    .est-phase-tabs,
+    .est-risk-tabs {
+        display: none !important;
+    }
+
+    /* 3. Single-part print isolation (when clicked from a specific EST part) */
+    body.is-printing-single-part .collapsible-wrapper:not(.printing-active-part) {
+        display: none !important;
+    }
+
+    body.is-printing-single-part .printing-active-part {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Default (e.g. Ctrl+P): hide unexpanded parts */
+    body:not(.is-printing-single-part) .collapsible-wrapper:not(:has(.collapsible-content.expanded)) {
+        display: none !important;
+    }
+
+    /* 4. Collapsible wrappers and content formatting for print */
+    .collapsible-wrapper {
+        border: none !important;
+        border-left: none !important;
+        box-shadow: none !important;
+        margin: 0 0 2rem 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        height: auto !important;
+        max-height: none !important;
+        page-break-inside: auto !important;
+        break-inside: auto !important;
+        background: transparent !important;
+    }
+
+    .collapsible-header {
+        cursor: default !important;
+        padding: 0 0 0.5rem 0 !important;
+        border-bottom: 2px solid #cbd5e1 !important;
+        margin-bottom: 1.25rem !important;
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+    }
+
+    .collapsible-header h3 {
+        font-size: 1.3rem !important;
+        margin: 0 !important;
+    }
+
+    .collapsible-content,
+    .collapsible-content.expanded {
+        display: block !important;
+        max-height: none !important;
+        height: auto !important;
+        overflow: visible !important;
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+        opacity: 1 !important;
+        padding: 0 !important;
+        transition: none !important;
+    }
+
+    /* 5. Drilldown & table containers: Remove max-height and internal scroll */
+    .card,
+    .group-bucket,
+    .help-container,
+    .table-container,
+    [style*="max-height"],
+    div[style*="overflow-y:auto"],
+    div[style*="overflow-y: auto"],
+    div[style*="overflow-x:auto"],
+    div[style*="overflow-x: auto"] {
+        max-height: none !important;
+        height: auto !important;
+        overflow: visible !important;
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+        box-shadow: none !important;
+    }
+
+    /* 6. Multi-page table breaking */
+    table,
+    .exec-drilldown-table,
+    .alv-table,
+    .risk-matrix-table {
+        page-break-inside: auto !important;
+        break-inside: auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        border-collapse: collapse !important;
+        font-size: 0.8rem !important;
+    }
+
+    tr {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+
+    th, td {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+
+    thead {
+        display: table-header-group !important;
+    }
+
+    tfoot {
+        display: table-footer-group !important;
+    }
+
+    /* 7. Cards, charts, and KPI grids */
+    .analytics-chart-card,
+    .kpi-card-modern,
+    .exec-alert-item {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        box-shadow: none !important;
+        border: 1px solid #e2e8f0 !important;
+    }
+
+    .analytics-chart-grid,
+    .analytics-kpi-grid {
+        page-break-inside: auto !important;
+        break-inside: auto !important;
+    }
+
+    .analytics-filter-bar {
+        border: 1px solid #e2e8f0 !important;
+        box-shadow: none !important;
+        margin-bottom: 1.5rem !important;
+    }
+
     .help-container {
         height: auto !important;
         box-shadow: none !important;
     }
+
     .help-main-content {
         padding: 0 !important;
+    }
+
+    /* Canvas (Chart.js) sizing */
+    canvas {
+        max-width: 100% !important;
+        height: auto !important;
+    }
+
+    /* Headings page-break protection */
+    h1, h2, h3, h4, h5 {
+        page-break-after: avoid !important;
+        break-after: avoid !important;
     }
 }
 .nav-list { padding-bottom: 3rem; }
@@ -2608,3 +2820,328 @@ body {
     animation: ring 0.6s ease-in-out;
 }
 
+
+
+/* ========================================================
+   EST EXECUTIVE SUMMARY & KPI REPORTS STYLES
+   ======================================================== */
+.est-exec-toolbar,
+.exp-exec-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    background: #ffffff;
+    padding: 1rem 1.25rem;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.est-exec-project-badge,
+.exp-exec-project-badge {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+.est-exec-avatar,
+.exp-exec-avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #0066FF, #004bb3);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    box-shadow: 0 4px 12px rgba(0, 102, 255, 0.25);
+}
+.est-health-badge,
+.exp-health-badge,
+.health-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+.est-health-healthy,
+.exp-health-healthy,
+.health-healthy { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+.est-health-warning,
+.exp-health-warning,
+.health-warning { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+.est-health-danger,
+.exp-health-danger,
+.health-danger { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+
+.est-exec-tabs,
+.exp-exec-tabs {
+    display: flex;
+    gap: 6px;
+    border-bottom: 2px solid #e2e8f0;
+    margin-bottom: 1.25rem;
+    overflow-x: auto;
+    padding-bottom: 2px;
+}
+.est-exec-tab-btn,
+.exp-exec-tab-btn {
+    padding: 9px 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #64748b;
+    background: transparent;
+    border: none;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+.est-exec-tab-btn:hover,
+.exp-exec-tab-btn:hover {
+    color: var(--primary-color);
+    background: rgba(0, 102, 255, 0.05);
+}
+.est-exec-tab-btn.active,
+.exp-exec-tab-btn.active {
+    color: var(--primary-color);
+    border-bottom: 3px solid var(--primary-color);
+    background: rgba(0, 102, 255, 0.08);
+}
+
+.exec-smart-alerts-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+.exec-alert-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1.25rem;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+.exec-alert-item.danger {
+    background: #fef2f2;
+    border-left: 5px solid #ef4444;
+    color: #991b1b;
+}
+.exec-alert-item.warning {
+    background: #fffbeb;
+    border-left: 5px solid #f59e0b;
+    color: #92400e;
+}
+.exec-alert-item.success {
+    background: #f0fdf4;
+    border-left: 5px solid #10b981;
+    color: #166534;
+}
+.exec-alert-item.info {
+    background: #f0f9ff;
+    border-left: 5px solid #0284c7;
+    color: #075985;
+}
+
+.kpi-card-interactive {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.kpi-card-interactive:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.08);
+}
+.kpi-trend {
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.kpi-trend.positive { color: #10b981; }
+.kpi-trend.negative { color: #ef4444; }
+.kpi-trend.neutral { color: #64748b; }
+
+.exec-drilldown-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+.exec-drilldown-table th {
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 600;
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 2px solid #e2e8f0;
+}
+.exec-drilldown-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+}
+.exec-drilldown-table tr:hover {
+    background: #f8fafc;
+}
+
+
+/* ========================================================
+   EST MODULE: PROGRESO DE FASES & ROADMAP STYLES
+   ======================================================== */
+.est-phase-stepper {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px;
+    margin-bottom: 1.5rem;
+}
+.est-phase-card {
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    padding: 1rem;
+    position: relative;
+    transition: all 0.25s ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.est-phase-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+}
+.est-phase-card.completed {
+    border-top: 5px solid #10b981;
+}
+.est-phase-card.in-progress {
+    border-top: 5px solid #0066FF;
+    border-color: #bfdbfe;
+    box-shadow: 0 4px 14px rgba(0, 102, 255, 0.08);
+}
+.est-phase-card.delayed {
+    border-top: 5px solid #ef4444;
+    border-color: #fecaca;
+    background: #fffafa;
+}
+.est-phase-card.upcoming {
+    border-top: 5px solid #94a3b8;
+    opacity: 0.9;
+}
+
+.est-phase-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+}
+.est-phase-badge.completed { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+.est-phase-badge.in-progress { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+.est-phase-badge.delayed { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+.est-phase-badge.upcoming { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+
+.est-phase-progress-bar {
+    height: 7px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 8px 0;
+}
+.est-phase-progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s ease;
+}
+.est-phase-progress-fill.completed { background: linear-gradient(90deg, #10b981, #34d399); }
+.est-phase-progress-fill.in-progress { background: linear-gradient(90deg, #0066FF, #38bdf8); }
+.est-phase-progress-fill.delayed { background: linear-gradient(90deg, #ef4444, #f87171); }
+.est-phase-progress-fill.upcoming { background: #94a3b8; }
+
+.est-phase-stat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.74rem;
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 600;
+}
+.est-phase-stat-pill.danger { background: #fef2f2; color: #dc2626; font-weight: 700; }
+.est-phase-stat-pill.warning { background: #fffbeb; color: #b45309; }
+.est-phase-stat-pill.success { background: #f0fdf4; color: #15803d; }
+
+
+/* ========================================================
+   EST MODULE: GESTION Y MATRIZ DE RIESGOS STYLES
+   ======================================================== */
+.est-risk-matrix-wrapper {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    padding: 1.25rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+}
+.est-risk-matrix-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 5px;
+    font-size: 0.8rem;
+    text-align: center;
+}
+.est-risk-matrix-table th {
+    padding: 8px 10px;
+    font-weight: 700;
+    color: #475569;
+    background: #f8fafc;
+    border-radius: 6px;
+}
+.est-risk-matrix-cell {
+    padding: 14px 6px;
+    border-radius: 8px;
+    font-weight: 800;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    cursor: default;
+    position: relative;
+}
+.est-risk-matrix-cell:hover {
+    transform: scale(1.04);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+.est-risk-matrix-cell.zone-low {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+}
+.est-risk-matrix-cell.zone-med {
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fde68a;
+}
+.est-risk-matrix-cell.zone-high {
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+.est-risk-matrix-cell.zone-critical {
+    background: #ef4444;
+    color: #ffffff;
+    border: 1px solid #dc2626;
+}

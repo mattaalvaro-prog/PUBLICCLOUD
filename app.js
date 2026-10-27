@@ -56,6 +56,7 @@ let state = {
     selectedUatIds: new Set(),
     uatCurrentPage: 1
 };
+window.state = state;
 
 // --- GLOBAL UTILS ---
 const Toast = Swal.mixin({
@@ -762,8 +763,10 @@ window.selectProjectFromTable = async function (id) {
             phase: 'Discover'
         };
 
-        // Ensure the 6 phases exist for this project
+        // Ensure phases and quality gates exist for this project
         await ensureProjectPhases(data.id);
+        if (typeof ensureProjectQualityGates === 'function') await ensureProjectQualityGates(data.id);
+        if (typeof ensureProjectQROperaciones === 'function') await ensureProjectQROperaciones(data.id);
 
         saveState();
         updateUIForUser();
@@ -1228,10 +1231,44 @@ async function renderProjectInformation() {
                     </div>
                 </div>
             </div>
+
+            <!-- SECCIÓN 4: QG - QUALITY GATES -->
+            ${isItemRestricted('proy', '4: QG - Quasality Gates') || isItemRestricted('proy', 'QG - Quasality Gates') || isItemRestricted('proy', 'Quality Gates') ? '' : `
+            <div class="collapsible-wrapper" style="border-left: 4px solid #00897b;">
+                <div class="collapsible-header" onclick="toggleSection(this)">
+                    <h3 style="color:#00897b; display:flex; align-items:center; gap:10px;">
+                        <i class="fas fa-clipboard-check"></i> 4: QG - Quasality Gates
+                    </h3>
+                    <i class="fas fa-plus-circle toggle-icon"></i>
+                </div>
+                <div class="collapsible-content">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap:wrap; gap:10px;">
+                        <p class="section-subtitle" style="margin: 0; font-size: 0.85rem;">
+                            Cuestionario de criterios y preguntas de calidad SAP Activate agrupados por fase.
+                        </p>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                            <button class="btn btn-outline" onclick="window.exportQualityGatesToExcel()" style="width:auto; padding:0.4rem 0.8rem; font-size:0.85rem;">
+                                <i class="fas fa-file-excel"></i> Descargar Excel
+                            </button>
+                            <button class="btn btn-outline" onclick="window.triggerUploadQGExcel()" style="width:auto; padding:0.4rem 0.8rem; font-size:0.85rem; border-color:#00897b; color:#00897b;" title="Actualizar preguntas del proyecto desde un archivo Excel">
+                                <i class="fas fa-file-upload"></i> Actualizar desde Excel
+                            </button>
+                            <button class="btn" onclick="window.openAddQGQuestionModal()" style="background:#00897b; color:white; width:auto; padding:0.4rem 0.8rem; font-size:0.85rem;">
+                                <i class="fas fa-plus"></i> Añadir Pregunta
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-container" id="proy-qg-table" style="margin-top: 0.5rem;">
+                        <p style="text-align:center; padding:2rem; color:#666;"><i class="fas fa-spinner fa-spin"></i> Cargando Quality Gates...</p>
+                    </div>
+                </div>
+            </div>
+            `}
         </div>
     `;
     loadProjectPhasesTable();
     loadProjectRisksTable();
+    loadProjectQualityGatesTable();
 }
 
 async function loadProjectPhasesTable() {
@@ -1680,6 +1717,1110 @@ window.exportRisksToExcel = async function () {
     XLSX.writeFile(wb, filename);
 
     Swal.close();
+};
+
+// --- QUALITY GATES (PROY - PARTE 4): CUESTIONARIO POR FASES ---
+
+const QG_PHASE_CONFIG = {
+    'Discover': { color: '#0284c7', label: 'Discover', gate: 'QG1' },
+    'Preparar': { color: '#16a34a', label: 'Preparar', gate: 'QG2' },
+    'Explorar': { color: '#ea580c', label: 'Explorar', gate: 'QG3' },
+    'Realizar': { color: '#9333ea', label: 'Realizar', gate: 'QG4' },
+    'Desplegar': { color: '#dc2626', label: 'Desplegar', gate: 'QG5' },
+    'Ejecutar': { color: '#0d9488', label: 'Ejecutar', gate: 'QG6' }
+};
+
+const DEFAULT_QG_QUESTIONS = [
+    // --- DISCOVER (QG1) ---
+    { id: 'QG-DIS-01', phase: 'Discover', area: 'Alcance y Contrato', question: '¿Se ha formalizado la firma del contrato y validado el alcance base acordado?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Jefe de Proyecto / Comercial' },
+    { id: 'QG-DIS-02', phase: 'Discover', area: 'Licenciamiento', question: '¿Se ha validado el Bill of Materials (BOM) y el dimensionamiento de suscripciones SAP Cloud?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Arquitecto Cloud / SAP' },
+    { id: 'QG-DIS-03', phase: 'Discover', area: 'Evaluación DDA', question: '¿Se ha completado y revisado el Digital Discovery Assessment (DDA) con el cliente?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Lead Consultor / Comercial' },
+    { id: 'QG-DIS-04', phase: 'Discover', area: 'Gobernanza', question: '¿Se ha planificado y convocado la reunión formal de Kick-Off con los comités del proyecto?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Jefe de Proyecto / PMO' },
+    { id: 'QG-DIS-05', phase: 'Discover', area: 'Sistemas y Accesos', question: '¿Se han solicitado y verificado los accesos a los sistemas Cloud y portal SAP for Me?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Lead Técnico / BASIS' },
+
+    // --- PREPARAR (QG2) ---
+    { id: 'QG-PRE-01', phase: 'Preparar', area: 'Planificación', question: '¿Está formalizado y aprobado el Plan de Proyecto definitivo, cronograma e hitos clave?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Jefe de Proyecto / PMO' },
+    { id: 'QG-PRE-02', phase: 'Preparar', area: 'Equipo y RACI', question: '¿Están definidos el equipo del proyecto, la matriz de comunicaciones y roles RACI?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Jefe de Proyecto' },
+    { id: 'QG-PRE-03', phase: 'Preparar', area: 'Entorno Starter', question: '¿El entorno Starter System / Sandbox está disponible y accesible para consultores y cliente?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Lead Técnico / BASIS' },
+    { id: 'QG-PRE-04', phase: 'Preparar', area: 'Metodología', question: '¿Se ha impartido la sesión de Mindset Cloud y estándares SAP Activate al equipo del cliente?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'PMO / Lead Functional' },
+    { id: 'QG-PRE-05', phase: 'Preparar', area: 'Plan Talleres', question: '¿Está coordinada la agenda detallada y el calendario de talleres Fit-to-Standard por LoB?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Jefe de Proyecto / Consultores' },
+
+    // --- EXPLORAR (QG3) ---
+    { id: 'QG-EXP-01', phase: 'Explorar', area: 'Talleres Fit-to-Standard', question: '¿Se han completado y registrado las actas de todos los Talleres Fit-to-Standard planificados?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Consultores LoB / PMO' },
+    { id: 'QG-EXP-02', phase: 'Explorar', area: 'Alcance BPML', question: '¿El Master BPML (Scope Items y Best Practices seleccionadas) ha sido revisado y aprobado?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Lead Functional / Cliente' },
+    { id: 'QG-EXP-03', phase: 'Explorar', area: 'Backlog y Gaps', question: '¿Se ha documentado, valorado y priorizado el Backlog de Requerimientos y Gaps identificados?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Jefe de Proyecto / Cliente' },
+    { id: 'QG-EXP-04', phase: 'Explorar', area: 'Diseño y Extensiones', question: '¿Se han completado los documentos de diseño funcional y técnico de extensiones/integraciones?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Arquitecto Técnico / Desarrollador' },
+    { id: 'QG-EXP-05', phase: 'Explorar', area: 'Estrategia de Datos', question: '¿Está definida la estrategia de migración de datos, plantillas y responsables de extracción?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Líder de Datos / Consultor' },
+
+    // --- REALIZAR (QG4) ---
+    { id: 'QG-REA-01', phase: 'Realizar', area: 'Configuración CBC', question: '¿Se han completado las configuraciones en Central Business Configuration y S/4HANA?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Consultores Funcionales' },
+    { id: 'QG-REA-02', phase: 'Realizar', area: 'Desarrollo e Interfaces', question: '¿Están desarrolladas y probadas unitariamente todas las interfaces, extensiones BTP y formularios?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Equipo de Desarrollo' },
+    { id: 'QG-REA-03', phase: 'Realizar', area: 'Cargas de Prueba', question: '¿Se han ejecutado las cargas de prueba de datos maestros y saldos con resultados conformes?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Líder de Datos / Cliente' },
+    { id: 'QG-REA-04', phase: 'Realizar', area: 'Pruebas UAT', question: '¿El plan de pruebas UAT está ejecutado y superado (tasa de éxito >95% OK sin defectos críticos)?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Quality Lead / Usuarios Clave' },
+    { id: 'QG-REA-05', phase: 'Realizar', area: 'Plan de Corte', question: '¿Está redactado, consensuado y aprobado el Plan Detallado de Transición y Cut-Over?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Jefe de Proyecto / BASIS' },
+
+    // --- DESPLEGAR (QG5) ---
+    { id: 'QG-DEY-01', phase: 'Desplegar', area: 'Simulación Cut-Over', question: '¿Se han completado satisfactoriamente los ensayos de corte (Dry Run / Simulación Cut-Over)?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Equipo Técnico / PMO' },
+    { id: 'QG-DEY-02', phase: 'Desplegar', area: 'Carga Productiva', question: '¿Se ha completado la carga final de datos maestros y saldos en el entorno Productivo (PRD)?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Líder de Datos / Cliente' },
+    { id: 'QG-DEY-03', phase: 'Desplegar', area: 'Aprobación GO / NO-GO', question: '¿Se ha obtenido la autorización formal y firma del Comité de Dirección GO / NO-GO?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Comité de Dirección' },
+    { id: 'QG-DEY-04', phase: 'Desplegar', area: 'Roles Productivos', question: '¿Se han asignado y comprobado los roles y autorizaciones de negocio en PRD para usuarios finales?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Seguridad / BASIS' },
+    { id: 'QG-DEY-05', phase: 'Desplegar', area: 'Plan Hypercare', question: '¿Está operativo el plan de soporte intensivo post-arranque (Hypercare) con turnos definidos?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Jefe de Proyecto / Soporte' },
+
+    // --- EJECUTAR (RUN) ---
+    { id: 'QG-EJE-01', phase: 'Ejecutar', area: 'Estabilidad de Arranque', question: '¿Se ha estabilizado la operación post Go-Live y se han resuelto las incidencias de arranque?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Jefe de Proyecto / Soporte' },
+    { id: 'QG-EJE-02', phase: 'Ejecutar', area: 'Transferencia y Cierre', question: '¿Se ha completado la transferencia de conocimiento final y entrega de documentación al cliente?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Consultoría / PMO' },
+    { id: 'QG-EJE-03', phase: 'Ejecutar', area: 'Aceptación y Traspaso AMS', question: '¿Se ha formalizado el acta de aceptación final del proyecto y traspaso al servicio AMS?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Comité de Dirección / AMS' }
+];
+
+window.qgFilterPhase = window.qgFilterPhase || 'All';
+window.qgFilterStatus = window.qgFilterStatus || 'All';
+window.qgSearchQuery = window.qgSearchQuery || '';
+window.qgGroupByPhase = window.qgGroupByPhase !== undefined ? window.qgGroupByPhase : true;
+window.qgCollapsedGroups = window.qgCollapsedGroups || {};
+
+async function ensureProjectQualityGates(projectId) {
+    if (!supabaseClient || !projectId) return;
+
+    try {
+        const { data: existing, error } = await supabaseClient
+            .from('project_quality_gates')
+            .select('codigo')
+            .eq('project_id', projectId);
+
+        if (error) {
+            console.error('Error comprobando project_quality_gates:', error);
+            return;
+        }
+
+        if (!existing || existing.length === 0) {
+            let localQuestions = null;
+            try {
+                const raw = localStorage.getItem(`altim_qg_questions_${projectId}`);
+                if (raw) localQuestions = JSON.parse(raw);
+            } catch (e) {}
+
+            const sourceList = (localQuestions && Array.isArray(localQuestions) && localQuestions.length > 0)
+                ? localQuestions
+                : DEFAULT_QG_QUESTIONS;
+
+            const toInsert = sourceList.map((q, idx) => ({
+                project_id: projectId,
+                codigo: q.id,
+                fase: q.phase,
+                area: q.area || '',
+                pregunta: q.question,
+                estado: q.status || 'Pendiente',
+                evidencia: q.evidence || '',
+                comentarios: q.comentarios || '',
+                fecha_validacion: q.date ? q.date : null,
+                responsable: q.owner || '',
+                orden: idx + 1
+            }));
+
+            const { error: insErr } = await supabaseClient
+                .from('project_quality_gates')
+                .insert(toInsert);
+
+            if (insErr) {
+                console.error('Error insertando preguntas por defecto en project_quality_gates:', insErr);
+            }
+        }
+    } catch (err) {
+        console.error('Excepción en ensureProjectQualityGates:', err);
+    }
+}
+
+async function getProjectQGQuestions() {
+    if (!state.selectedProject) return [];
+    const projectId = state.selectedProject.id;
+    const storageKey = `altim_qg_questions_${projectId}`;
+
+    if (supabaseClient) {
+        await ensureProjectQualityGates(projectId);
+        const { data, error } = await supabaseClient
+            .from('project_quality_gates')
+            .select('*')
+            .eq('project_id', projectId)
+            .order('orden', { ascending: true })
+            .order('id', { ascending: true });
+
+        if (!error && data && data.length > 0) {
+            const mapped = data.map(r => ({
+                db_id: r.id,
+                id: r.codigo,
+                phase: r.fase,
+                area: r.area || '',
+                question: r.pregunta || '',
+                status: r.estado || 'Pendiente',
+                evidence: r.evidencia || '',
+                comentarios: r.comentarios || '',
+                date: r.fecha_validacion ? String(r.fecha_validacion).split('T')[0] : '',
+                owner: r.responsable || '',
+                order_idx: r.orden || 0
+            }));
+            localStorage.setItem(storageKey, JSON.stringify(mapped));
+            window.currentProjectQGQuestions = mapped;
+            return mapped;
+        }
+    }
+
+    let list = null;
+    try {
+        const raw = localStorage.getItem(storageKey);
+        if (raw) list = JSON.parse(raw);
+    } catch (e) { list = null; }
+
+    if (!list || !Array.isArray(list) || list.length === 0) {
+        list = JSON.parse(JSON.stringify(DEFAULT_QG_QUESTIONS));
+        localStorage.setItem(storageKey, JSON.stringify(list));
+    }
+    window.currentProjectQGQuestions = list;
+    return list;
+}
+
+function saveProjectQGQuestions(list) {
+    if (!state.selectedProject) return;
+    const storageKey = `altim_qg_questions_${state.selectedProject.id}`;
+    localStorage.setItem(storageKey, JSON.stringify(list));
+    window.currentProjectQGQuestions = list;
+}
+
+const QG_STATUS_CONFIG = {
+    'Cumple': { bg: '#dcfce7', text: '#15803d', border: '#86efac', icon: 'fa-check-circle', label: 'Cumple' },
+    'En Proceso': { bg: '#fef3c7', text: '#b45309', border: '#fde68a', icon: 'fa-clock', label: 'En Proceso' },
+    'Pendiente': { bg: '#f1f5f9', text: '#64748b', border: '#cbd5e1', icon: 'fa-hourglass-start', label: 'Pendiente' },
+    'No Cumple': { bg: '#fee2e2', text: '#b91c1c', border: '#fca5a5', icon: 'fa-times-circle', label: 'No Cumple' }
+};
+
+async function loadProjectQualityGatesTable() {
+    if (!state.selectedProject) return;
+    const container = document.getElementById('proy-qg-table');
+    if (!container) return;
+
+    if (!window.currentProjectQGQuestions || window.currentProjectQGQuestions.length === 0) {
+        container.innerHTML = `<p style="text-align:center; padding:2rem; color:#64748b;"><i class="fas fa-spinner fa-spin"></i> Cargando Quality Gates de Proyecto...</p>`;
+    }
+
+    const allQuestions = await getProjectQGQuestions();
+    const phaseKeys = ['Discover', 'Preparar', 'Explorar', 'Realizar', 'Desplegar', 'Ejecutar'];
+
+    // Stats per phase
+    const phaseStats = {};
+    phaseKeys.forEach(p => {
+        const inPhase = allQuestions.filter(q => q.phase === p);
+        const done = inPhase.filter(q => q.status === 'Cumple').length;
+        const total = inPhase.length;
+        phaseStats[p] = {
+            total: total,
+            done: done,
+            pct: total > 0 ? Math.round((done / total) * 100) : 0
+        };
+    });
+
+    // Apply Filters
+    let filtered = allQuestions.filter(q => {
+        if (window.qgFilterPhase !== 'All' && q.phase !== window.qgFilterPhase) return false;
+        if (window.qgFilterStatus !== 'All' && q.status !== window.qgFilterStatus) return false;
+        if (window.qgSearchQuery) {
+            const query = window.qgSearchQuery.toLowerCase();
+            const text = `${q.id} ${q.phase} ${q.area} ${q.question} ${q.evidence || ''} ${q.comentarios || ''} ${q.owner || ''}`.toLowerCase();
+            if (!text.includes(query)) return false;
+        }
+        return true;
+    });
+
+    // Global / Filtered KPIs
+    const totalCount = filtered.length;
+    const countCumple = filtered.filter(q => q.status === 'Cumple').length;
+    const countEnProceso = filtered.filter(q => q.status === 'En Proceso').length;
+    const countPendiente = filtered.filter(q => q.status === 'Pendiente' || q.status === 'No Cumple').length;
+    const completionRate = totalCount > 0 ? Math.round((countCumple / totalCount) * 100) : 0;
+
+    container.innerHTML = `
+        <!-- PHASE FILTER TABS / PILLS -->
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; align-items:center;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; margin-right:4px;">
+                <i class="fas fa-layer-group" style="color:#00897b;"></i> Fase:
+            </span>
+            <button class="btn btn-sm ${window.qgFilterPhase === 'All' ? 'btn-primary' : 'btn-outline'}" 
+                    style="${window.qgFilterPhase === 'All' ? 'background:#00897b; border-color:#00897b; color:white;' : 'border-color:#cbd5e1; color:#334155;'} padding:3px 10px; font-size:0.78rem; border-radius:14px;" 
+                    onclick="window.filterQGByPhase('All')">
+                Todas (${allQuestions.length})
+            </button>
+            ${phaseKeys.map(p => {
+                const conf = QG_PHASE_CONFIG[p] || { color: '#64748b' };
+                const st = phaseStats[p] || { total: 0, done: 0 };
+                const isActive = window.qgFilterPhase === p;
+                return `
+                    <button class="btn btn-sm ${isActive ? 'btn-primary' : 'btn-outline'}" 
+                            style="${isActive ? `background:${conf.color}; border-color:${conf.color}; color:white;` : `border-color:#cbd5e1; color:#334155;`} padding:3px 10px; font-size:0.78rem; border-radius:14px;" 
+                            onclick="window.filterQGByPhase('${p}')">
+                        <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${isActive ? 'white' : conf.color}; margin-right:4px;"></span>
+                        ${p} (${st.done}/${st.total})
+                    </button>
+                `;
+            }).join('')}
+        </div>
+
+        <!-- FILTER CONTROLS BAR -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; background:#f8fafc; padding:8px 12px; border-radius:6px; border:1px solid #e2e8f0; margin-bottom:14px;">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <label style="font-size:0.78rem; font-weight:700; color:#475569;">Fase:</label>
+                    <select class="swal2-input" style="width:auto; margin:0; height:32px; font-size:0.8rem; padding:2px 8px;" onchange="window.filterQGByPhase(this.value)">
+                        <option value="All" ${window.qgFilterPhase === 'All' ? 'selected' : ''}>-- Todas las Fases --</option>
+                        ${phaseKeys.map(p => `<option value="${p}" ${window.qgFilterPhase === p ? 'selected' : ''}>${p} (${phaseStats[p]?.total || 0} preguntas)</option>`).join('')}
+                    </select>
+                </div>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <label style="font-size:0.78rem; font-weight:700; color:#475569;">Estado:</label>
+                    <select class="swal2-input" style="width:auto; margin:0; height:32px; font-size:0.8rem; padding:2px 8px;" onchange="window.changeQGStatusFilter(this.value)">
+                        <option value="All" ${window.qgFilterStatus === 'All' ? 'selected' : ''}>Todos los Estados</option>
+                        <option value="Cumple" ${window.qgFilterStatus === 'Cumple' ? 'selected' : ''}>Cumple (Aprobado)</option>
+                        <option value="En Proceso" ${window.qgFilterStatus === 'En Proceso' ? 'selected' : ''}>En Proceso</option>
+                        <option value="Pendiente" ${window.qgFilterStatus === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
+                        <option value="No Cumple" ${window.qgFilterStatus === 'No Cumple' ? 'selected' : ''}>No Cumple</option>
+                    </select>
+                </div>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <label style="font-size:0.78rem; font-weight:700; color:#475569;"><i class="fas fa-search"></i></label>
+                    <input type="text" class="swal2-input" style="width:180px; margin:0; height:32px; font-size:0.8rem; padding:2px 8px;" placeholder="Buscar pregunta..." value="${window.qgSearchQuery || ''}" oninput="window.setQGSearchQuery(this.value)">
+                </div>
+            </div>
+
+            <div style="display:flex; align-items:center; gap:12px;">
+                <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.8rem; font-weight:700; color:#1e293b; user-select:none;">
+                    <input type="checkbox" ${window.qgGroupByPhase ? 'checked' : ''} onchange="window.toggleQGGrouping(this.checked)" style="cursor:pointer; width:15px; height:15px;">
+                    Agrupar por Fase
+                </label>
+                ${window.qgGroupByPhase ? `
+                    <button class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:0.75rem;" onclick="window.expandAllQGGroups(true)">
+                        <i class="fas fa-expand-arrows-alt"></i> Expandir
+                    </button>
+                    <button class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:0.75rem;" onclick="window.expandAllQGGroups(false)">
+                        <i class="fas fa-compress-arrows-alt"></i> Plegar
+                    </button>
+                ` : ''}
+            </div>
+        </div>
+
+        <!-- DYNAMIC KPIS -->
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+            <div class="kpi-card-modern" style="padding:10px 14px; border-left:4px solid #00897b; background:#fff; border-radius:8px; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                <div style="font-size:0.72rem; color:#64748b; font-weight:700; text-transform:uppercase;">
+                    <i class="fas fa-question-circle" style="color:#00897b;"></i> Total Preguntas ${window.qgFilterPhase !== 'All' ? `(${window.qgFilterPhase})` : ''}
+                </div>
+                <div style="font-size:1.4rem; font-weight:800; color:#0f172a; margin-top:2px;">${totalCount}</div>
+            </div>
+            <div class="kpi-card-modern" style="padding:10px 14px; border-left:4px solid #10b981; background:#fff; border-radius:8px; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                <div style="font-size:0.72rem; color:#64748b; font-weight:700; text-transform:uppercase;">
+                    <i class="fas fa-check-circle" style="color:#10b981;"></i> Preguntas Cumplidas
+                </div>
+                <div style="font-size:1.4rem; font-weight:800; color:#10b981; margin-top:2px;">${countCumple}</div>
+            </div>
+            <div class="kpi-card-modern" style="padding:10px 14px; border-left:4px solid #f59e0b; background:#fff; border-radius:8px; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                <div style="font-size:0.72rem; color:#64748b; font-weight:700; text-transform:uppercase;">
+                    <i class="fas fa-clock" style="color:#f59e0b;"></i> En Proceso
+                </div>
+                <div style="font-size:1.4rem; font-weight:800; color:#f59e0b; margin-top:2px;">${countEnProceso}</div>
+            </div>
+            <div class="kpi-card-modern" style="padding:10px 14px; border-left:4px solid #00897b; background:#fff; border-radius:8px; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                <div style="font-size:0.72rem; color:#64748b; font-weight:700; text-transform:uppercase;">
+                    <i class="fas fa-percentage" style="color:#00897b;"></i> Nivel de Cumplimiento
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
+                    <span style="font-size:1.4rem; font-weight:800; color:#00897b;">${completionRate}%</span>
+                    <div style="flex:1; height:7px; background:#e2e8f0; border-radius:4px; overflow:hidden;">
+                        <div style="width:${completionRate}%; height:100%; background:#00897b;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TABLE CONTENT -->
+        <div id="qg-table-content-area">
+            ${renderQGQuestionsTableContent(filtered)}
+        </div>
+    `;
+}
+
+function renderQGQuestionsTableContent(filtered) {
+    if (filtered.length === 0) {
+        return `
+            <div style="text-align:center; padding:2.5rem; color:#64748b; background:#fff; border-radius:8px; border:1px dashed #cbd5e1;">
+                <i class="fas fa-search fa-2x" style="opacity:0.3; margin-bottom:8px;"></i>
+                <p style="margin:0; font-weight:600;">No se encontraron preguntas de Quality Gate con los filtros seleccionados.</p>
+                <button class="btn btn-outline btn-sm" style="margin-top:10px;" onclick="window.filterQGByPhase('All'); window.changeQGStatusFilter('All');">Restablecer Filtros</button>
+            </div>
+        `;
+    }
+
+    if (!window.qgGroupByPhase) {
+        // Flat Table
+        return `
+            <div style="overflow-x: auto; width: 100%;">
+                <table class="alv-table" style="min-width: 1200px;">
+                    <thead>
+                        <tr>
+                            <th style="width: 90px;">ID</th>
+                            <th style="width: 110px;">Fase</th>
+                            <th style="width: 160px;">Área / Requisito</th>
+                            <th style="min-width: 300px;">Pregunta / Criterio de Calidad</th>
+                            <th style="width: 135px; text-align:center;">Estado</th>
+                            <th style="width: 200px;">Evidencia / Observaciones</th>
+                            <th style="width: 200px;">Comentarios</th>
+                            <th style="width: 105px;">F. Validación</th>
+                            <th style="width: 140px;">Responsable</th>
+                            <th style="width: 80px; text-align:center;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filtered.map(q => renderQGTableRow(q, true)).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    // Grouped by Phase
+    const phasesPresent = ['Discover', 'Preparar', 'Explorar', 'Realizar', 'Desplegar', 'Ejecutar'].filter(p => filtered.some(q => q.phase === p));
+
+    return phasesPresent.map(p => {
+        const conf = QG_PHASE_CONFIG[p] || { color: '#00897b', label: p, gate: 'QG' };
+        const questionsInPhase = filtered.filter(q => q.phase === p);
+        const doneInPhase = questionsInPhase.filter(q => q.status === 'Cumple').length;
+        const totalInPhase = questionsInPhase.length;
+        const pct = totalInPhase > 0 ? Math.round((doneInPhase / totalInPhase) * 100) : 0;
+        const isCollapsed = !!window.qgCollapsedGroups[p];
+
+        return `
+            <div style="margin-bottom: 1.25rem; background: #fff; border-radius: 8px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                <!-- GROUP BANNER HEADER -->
+                <div class="qg-group-header" onclick="window.toggleQGPhaseGroup('${p}')" 
+                     style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 10px 14px; border-left: 5px solid ${conf.color}; user-select: none;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <i class="fas ${isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'}" style="color: ${conf.color}; font-size: 0.9rem;"></i>
+                        <strong style="color: #1e293b; font-size: 0.95rem;">
+                            <i class="fas fa-shield-alt" style="color: ${conf.color}; margin-right: 4px;"></i>
+                            FASE: ${p.toUpperCase()} <span style="font-weight: 500; font-size: 0.8rem; color: #64748b;">(${conf.gate})</span>
+                        </strong>
+                        <span style="font-size: 0.75rem; background: ${conf.color}15; color: ${conf.color}; font-weight: 700; padding: 2px 10px; border-radius: 12px;">
+                            ${doneInPhase} de ${totalInPhase} cumplidas (${pct}%)
+                        </span>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 110px; height: 7px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+                                <div style="width: ${pct}%; height: 100%; background: ${pct === 100 ? '#10b981' : conf.color};"></div>
+                            </div>
+                            <span style="font-size: 0.75rem; font-weight: 700; color: ${pct === 100 ? '#10b981' : conf.color};">${pct}%</span>
+                        </div>
+                        <span style="font-size: 0.75rem; color: #64748b;">${isCollapsed ? '<i class="fas fa-plus"></i> Desplegar' : '<i class="fas fa-minus"></i> Plegar'}</span>
+                    </div>
+                </div>
+
+                <!-- GROUP TABLE -->
+                ${isCollapsed ? '' : `
+                    <div style="overflow-x: auto; width: 100%;">
+                        <table class="alv-table" style="min-width: 1100px; margin: 0;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 90px;">ID</th>
+                                    <th style="width: 160px;">Área / Requisito</th>
+                                    <th style="min-width: 300px;">Pregunta / Criterio de Calidad</th>
+                                    <th style="width: 135px; text-align:center;">Estado</th>
+                                    <th style="width: 200px;">Evidencia / Observaciones</th>
+                                    <th style="width: 200px;">Comentarios</th>
+                                    <th style="width: 105px;">F. Validación</th>
+                                    <th style="width: 150px;">Responsable</th>
+                                    <th style="width: 80px; text-align:center;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${questionsInPhase.map(q => renderQGTableRow(q, false)).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `}
+            </div>
+        `;
+    }).join('');
+}
+
+function renderQGTableRow(q, showPhaseCol) {
+    const stConfig = QG_STATUS_CONFIG[q.status] || QG_STATUS_CONFIG['Pendiente'];
+    const pConf = QG_PHASE_CONFIG[q.phase] || { color: '#64748b' };
+
+    return `
+        <tr>
+            <td style="font-weight:700; color:${pConf.color};">${q.id}</td>
+            ${showPhaseCol ? `
+                <td>
+                    <span style="font-size:0.75rem; font-weight:700; padding:2px 8px; border-radius:10px; background:${pConf.color}15; color:${pConf.color};">
+                        ${q.phase}
+                    </span>
+                </td>
+            ` : ''}
+            <td style="font-weight:600; text-align:left; color:#1e293b;">${q.area}</td>
+            <td style="text-align:left; white-space:normal; font-size:0.82rem; line-height:1.35; color:#334155;">
+                ${q.question}
+            </td>
+            <td style="text-align:center;">
+                <select class="swal2-input qg-status-select" 
+                        style="width:auto; margin:0; height:28px; font-size:0.75rem; padding:2px 8px; font-weight:700; border-radius:12px; border:1px solid ${stConfig.border}; background:${stConfig.bg}; color:${stConfig.text}; cursor:pointer;" 
+                        onchange="window.quickUpdateQGStatus('${q.id}', this.value)">
+                    <option value="Cumple" ${q.status === 'Cumple' ? 'selected' : ''}>✓ Cumple</option>
+                    <option value="En Proceso" ${q.status === 'En Proceso' ? 'selected' : ''}>⏳ En Proceso</option>
+                    <option value="Pendiente" ${q.status === 'Pendiente' ? 'selected' : ''}>⚪ Pendiente</option>
+                    <option value="No Cumple" ${q.status === 'No Cumple' ? 'selected' : ''}>✗ No Cumple</option>
+                </select>
+            </td>
+            <td style="text-align:left; font-size:0.78rem; color:#475569; white-space:normal;">
+                ${q.evidence ? `<span><i class="fas fa-file-alt" style="color:#00897b; margin-right:4px;"></i>${q.evidence}</span>` : '<span style="color:#94a3b8; font-style:italic;">-</span>'}
+            </td>
+            <td style="text-align:left; font-size:0.78rem; color:#475569; white-space:normal;">
+                ${q.comentarios ? `<span><i class="fas fa-comment-dots" style="color:#00897b; margin-right:4px;"></i>${q.comentarios}</span>` : '<span style="color:#94a3b8; font-style:italic;">-</span>'}
+            </td>
+            <td style="font-size:0.8rem; color:#64748b;">${q.date || '-'}</td>
+            <td style="text-align:left; font-size:0.8rem; color:#475569;">${q.owner || '-'}</td>
+            <td style="text-align:center;">
+                <div style="display:flex; gap:4px; justify-content:center;">
+                    <button class="btn-icon" title="Editar Pregunta / Evidencia / Comentarios" onclick="window.openEditQGQuestionModal('${q.id}')">
+                        <i class="fas fa-edit" style="color:var(--sap-blue);"></i>
+                    </button>
+                    <button class="btn-icon" title="Eliminar Pregunta" onclick="window.deleteQGQuestion('${q.id}')">
+                        <i class="fas fa-trash-alt" style="color:#dc2626; opacity:0.8;"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+window.filterQGByPhase = function(phase) {
+    window.qgFilterPhase = phase;
+    loadProjectQualityGatesTable();
+};
+
+window.changeQGStatusFilter = function(status) {
+    window.qgFilterStatus = status;
+    loadProjectQualityGatesTable();
+};
+
+window.setQGSearchQuery = function(query) {
+    window.qgSearchQuery = query;
+    loadProjectQualityGatesTable();
+};
+
+window.toggleQGGrouping = function(checked) {
+    window.qgGroupByPhase = checked;
+    loadProjectQualityGatesTable();
+};
+
+window.toggleQGPhaseGroup = function(phase) {
+    window.qgCollapsedGroups[phase] = !window.qgCollapsedGroups[phase];
+    loadProjectQualityGatesTable();
+};
+
+window.expandAllQGGroups = function(expand) {
+    ['Discover', 'Preparar', 'Explorar', 'Realizar', 'Desplegar', 'Ejecutar'].forEach(p => {
+        window.qgCollapsedGroups[p] = !expand;
+    });
+    loadProjectQualityGatesTable();
+};
+
+window.quickUpdateQGStatus = async function(id, newStatus) {
+    if (!state.selectedProject) return;
+    const projectId = state.selectedProject.id;
+    const list = window.currentProjectQGQuestions || (await getProjectQGQuestions());
+    const item = list.find(q => q.id === id);
+    if (!item) return;
+
+    item.status = newStatus;
+    if (newStatus === 'Cumple' && !item.date) {
+        item.date = new Date().toISOString().split('T')[0];
+    }
+
+    if (supabaseClient) {
+        const { error } = await supabaseClient
+            .from('project_quality_gates')
+            .update({
+                estado: newStatus,
+                fecha_validacion: item.date ? item.date : null,
+                updated_at: new Date().toISOString()
+            })
+            .eq('project_id', projectId)
+            .eq('codigo', id);
+
+        if (error) {
+            console.error('Error actualizando estado en Supabase:', error);
+            Toast.fire({ icon: 'warning', title: 'Actualizado localmente (Error en BD)' });
+        } else {
+            Toast.fire({ icon: 'success', title: `Estado actualizado a "${newStatus}"` });
+        }
+    } else {
+        Toast.fire({ icon: 'success', title: `Estado actualizado a "${newStatus}"` });
+    }
+
+    saveProjectQGQuestions(list);
+    loadProjectQualityGatesTable();
+};
+
+window.openEditQGQuestionModal = async function(id) {
+    const list = window.currentProjectQGQuestions || (await getProjectQGQuestions());
+    const q = list.find(item => item.id === id);
+    if (!q) return;
+
+    const { value: formValues } = await Swal.fire({
+        title: `Editar Pregunta: ${q.id}`,
+        width: '680px',
+        html: `
+            <div style="text-align:left; display:flex; flex-direction:column; gap:12px;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div class="form-group">
+                        <label style="font-weight:700; font-size:0.85rem;">Fase:</label>
+                        <select id="swal-qg-phase" class="swal2-input" style="width:100%; margin:0;">
+                            ${['Discover', 'Preparar', 'Explorar', 'Realizar', 'Desplegar', 'Ejecutar'].map(p => `
+                                <option value="${p}" ${q.phase === p ? 'selected' : ''}>${p}</option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-weight:700; font-size:0.85rem;">Área / Requisito:</label>
+                        <input id="swal-qg-area" class="swal2-input" style="width:100%; margin:0;" value="${q.area || ''}">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label style="font-weight:700; font-size:0.85rem;">Pregunta / Criterio de Calidad *</label>
+                    <textarea id="swal-qg-question" class="swal2-input" style="width:100%; margin:0; height:60px;">${q.question || ''}</textarea>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div class="form-group">
+                        <label style="font-weight:700; font-size:0.85rem;">Estado de Cumplimiento:</label>
+                        <select id="swal-qg-status" class="swal2-input" style="width:100%; margin:0;">
+                            <option value="Cumple" ${q.status === 'Cumple' ? 'selected' : ''}>✓ Cumple (Aprobado)</option>
+                            <option value="En Proceso" ${q.status === 'En Proceso' ? 'selected' : ''}>⏳ En Proceso</option>
+                            <option value="Pendiente" ${q.status === 'Pendiente' ? 'selected' : ''}>⚪ Pendiente</option>
+                            <option value="No Cumple" ${q.status === 'No Cumple' ? 'selected' : ''}>✗ No Cumple</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-weight:700; font-size:0.85rem;">Fecha de Validación:</label>
+                        <input type="date" id="swal-qg-date" class="swal2-input" style="width:100%; margin:0;" value="${q.date || ''}">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label style="font-weight:700; font-size:0.85rem;">Responsable:</label>
+                    <input id="swal-qg-owner" class="swal2-input" style="width:100%; margin:0;" value="${q.owner || ''}">
+                </div>
+
+                <div class="form-group">
+                    <label style="font-weight:700; font-size:0.85rem;">Evidencia / Observaciones:</label>
+                    <textarea id="swal-qg-evidence" class="swal2-input" style="width:100%; margin:0; height:50px;" placeholder="URL de documento, acta, observaciones o justificación...">${q.evidence || ''}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label style="font-weight:700; font-size:0.85rem;">Comentarios:</label>
+                    <textarea id="swal-qg-comentarios" class="swal2-input" style="width:100%; margin:0; height:50px;" placeholder="Comentarios adicionales o notas de seguimiento...">${q.comentarios || ''}</textarea>
+                </div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Guardar Cambios',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+            return {
+                phase: document.getElementById('swal-qg-phase').value,
+                area: document.getElementById('swal-qg-area').value,
+                question: document.getElementById('swal-qg-question').value,
+                status: document.getElementById('swal-qg-status').value,
+                date: document.getElementById('swal-qg-date').value,
+                owner: document.getElementById('swal-qg-owner').value,
+                evidence: document.getElementById('swal-qg-evidence').value,
+                comentarios: document.getElementById('swal-qg-comentarios').value
+            };
+        }
+    });
+
+    if (formValues) {
+        Object.assign(q, formValues);
+        if (supabaseClient && state.selectedProject) {
+            const { error } = await supabaseClient
+                .from('project_quality_gates')
+                .update({
+                    fase: formValues.phase,
+                    area: formValues.area,
+                    pregunta: formValues.question,
+                    estado: formValues.status,
+                    fecha_validacion: formValues.date ? formValues.date : null,
+                    responsable: formValues.owner,
+                    evidencia: formValues.evidence,
+                    comentarios: formValues.comentarios,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('project_id', state.selectedProject.id)
+                .eq('codigo', id);
+
+            if (error) {
+                Swal.fire('Error al actualizar en BD', error.message, 'error');
+            } else {
+                Toast.fire({ icon: 'success', title: 'Pregunta actualizada en BD' });
+            }
+        } else {
+            Toast.fire({ icon: 'success', title: 'Pregunta actualizada' });
+        }
+
+        saveProjectQGQuestions(list);
+        loadProjectQualityGatesTable();
+    }
+};
+
+window.openAddQGQuestionModal = async function(defaultPhase = null) {
+    if (!state.selectedProject) return;
+    const targetPhase = defaultPhase || (window.qgFilterPhase !== 'All' ? window.qgFilterPhase : 'Discover');
+
+    const { value: formValues } = await Swal.fire({
+        title: 'Añadir Nueva Pregunta de Quality Gate',
+        width: '680px',
+        html: `
+            <div style="text-align:left; display:flex; flex-direction:column; gap:12px;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div class="form-group">
+                        <label style="font-weight:700; font-size:0.85rem;">Fase *</label>
+                        <select id="swal-add-qg-phase" class="swal2-input" style="width:100%; margin:0;">
+                            ${['Discover', 'Preparar', 'Explorar', 'Realizar', 'Desplegar', 'Ejecutar'].map(p => `
+                                <option value="${p}" ${targetPhase === p ? 'selected' : ''}>${p}</option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-weight:700; font-size:0.85rem;">Área / Requisito *</label>
+                        <input id="swal-add-qg-area" class="swal2-input" style="width:100%; margin:0;" placeholder="Ej. Arquitectura, Datos, UAT...">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label style="font-weight:700; font-size:0.85rem;">Pregunta / Criterio de Calidad *</label>
+                    <textarea id="swal-add-qg-question" class="swal2-input" style="width:100%; margin:0; height:55px;" placeholder="¿Se ha completado...?"></textarea>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div class="form-group">
+                        <label style="font-weight:700; font-size:0.85rem;">Estado Inicial:</label>
+                        <select id="swal-add-qg-status" class="swal2-input" style="width:100%; margin:0;">
+                            <option value="Pendiente" selected>⚪ Pendiente</option>
+                            <option value="En Proceso">⏳ En Proceso</option>
+                            <option value="Cumple">✓ Cumple</option>
+                            <option value="No Cumple">✗ No Cumple</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-weight:700; font-size:0.85rem;">Responsable:</label>
+                        <input id="swal-add-qg-owner" class="swal2-input" style="width:100%; margin:0;" value="${state.currentUser?.first_name || 'Jefe de Proyecto'}">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label style="font-weight:700; font-size:0.85rem;">Evidencia / Observaciones:</label>
+                    <textarea id="swal-add-qg-evidence" class="swal2-input" style="width:100%; margin:0; height:45px;" placeholder="Enlace o justificación..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label style="font-weight:700; font-size:0.85rem;">Comentarios:</label>
+                    <textarea id="swal-add-qg-comentarios" class="swal2-input" style="width:100%; margin:0; height:45px;" placeholder="Comentarios adicionales..."></textarea>
+                </div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Añadir Pregunta',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+            const question = document.getElementById('swal-add-qg-question').value.trim();
+            const area = document.getElementById('swal-add-qg-area').value.trim();
+            if (!question || !area) {
+                Swal.showValidationMessage('Por favor completa el Área y la Pregunta.');
+                return false;
+            }
+            return {
+                phase: document.getElementById('swal-add-qg-phase').value,
+                area: area,
+                question: question,
+                status: document.getElementById('swal-add-qg-status').value,
+                owner: document.getElementById('swal-add-qg-owner').value,
+                evidence: document.getElementById('swal-add-qg-evidence').value,
+                comentarios: document.getElementById('swal-add-qg-comentarios').value,
+                date: ''
+            };
+        }
+    });
+
+    if (formValues) {
+        const list = window.currentProjectQGQuestions || (await getProjectQGQuestions());
+        const prefix = `QG-${formValues.phase.substring(0, 3).toUpperCase()}`;
+        const countInPhase = list.filter(q => q.phase === formValues.phase).length;
+        const newId = `${prefix}-${String(countInPhase + 1).padStart(2, '0')}`;
+
+        const newQuestionObj = {
+            id: newId,
+            ...formValues
+        };
+
+        if (supabaseClient) {
+            const { error } = await supabaseClient
+                .from('project_quality_gates')
+                .insert([{
+                    project_id: state.selectedProject.id,
+                    codigo: newId,
+                    fase: formValues.phase,
+                    area: formValues.area,
+                    pregunta: formValues.question,
+                    estado: formValues.status,
+                    fecha_validacion: formValues.date ? formValues.date : null,
+                    responsable: formValues.owner,
+                    evidencia: formValues.evidence,
+                    comentarios: formValues.comentarios,
+                    orden: list.length + 1
+                }]);
+
+            if (error) {
+                Swal.fire('Error al guardar en BD', error.message, 'error');
+                return;
+            }
+        }
+
+        list.push(newQuestionObj);
+        saveProjectQGQuestions(list);
+        Toast.fire({ icon: 'success', title: `Pregunta ${newId} guardada en BD` });
+        loadProjectQualityGatesTable();
+    }
+};
+
+window.deleteQGQuestion = async function(id) {
+    const list = window.currentProjectQGQuestions || (await getProjectQGQuestions());
+    const idx = list.findIndex(q => q.id === id);
+    if (idx === -1) return;
+
+    const res = await Swal.fire({
+        title: `¿Eliminar pregunta ${id}?`,
+        text: list[idx].question,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (res.isConfirmed) {
+        if (supabaseClient && state.selectedProject) {
+            const { error } = await supabaseClient
+                .from('project_quality_gates')
+                .delete()
+                .eq('project_id', state.selectedProject.id)
+                .eq('codigo', id);
+
+            if (error) {
+                Swal.fire('Error al eliminar en BD', error.message, 'error');
+                return;
+            }
+        }
+
+        list.splice(idx, 1);
+        saveProjectQGQuestions(list);
+        Toast.fire({ icon: 'success', title: 'Pregunta eliminada de BD' });
+        loadProjectQualityGatesTable();
+    }
+};
+
+window.exportQualityGatesToExcel = async function() {
+    if (!state.selectedProject) return;
+    const questions = window.currentProjectQGQuestions || (await getProjectQGQuestions());
+    if (!questions.length) {
+        Swal.fire('Atención', 'No hay datos de Quality Gates para exportar.', 'info');
+        return;
+    }
+
+    const data = questions.map(q => ({
+        'Fase': q.phase,
+        'ID Pregunta': q.id,
+        'Área / Requisito': q.area,
+        'Pregunta / Criterio de Calidad': q.question,
+        'Estado': q.status,
+        'Evidencia / Observaciones': q.evidence || '',
+        'Comentarios': q.comentarios || '',
+        'Fecha Validación': q.date || '',
+        'Responsable': q.owner || ''
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    ws['!cols'] = [
+        { wch: 14 }, { wch: 14 }, { wch: 25 }, { wch: 55 },
+        { wch: 15 }, { wch: 35 }, { wch: 35 }, { wch: 16 }, { wch: 25 }
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Quality_Gates');
+    const date = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb, `Quality_Gates_${state.selectedProject.name || 'Proyecto'}_${date}.xlsx`);
+};
+
+// --- HELPER FUNCTIONS FOR EXCEL IMPORT ---
+
+function parseExcelDate(val) {
+    if (!val) return null;
+    if (val instanceof Date && !isNaN(val)) {
+        return val.toISOString().split('T')[0];
+    }
+    if (typeof val === 'number') {
+        const jsDate = new Date(Math.round((val - 25569) * 86400 * 1000));
+        return !isNaN(jsDate) ? jsDate.toISOString().split('T')[0] : null;
+    }
+    if (typeof val === 'string') {
+        const trimmed = val.trim();
+        if (!trimmed || trimmed === '-' || trimmed.toLowerCase() === 'null') return null;
+        if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+            return trimmed.substring(0, 10);
+        }
+        const dmy = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+        if (dmy) {
+            const day = String(dmy[1]).padStart(2, '0');
+            const month = String(dmy[2]).padStart(2, '0');
+            const year = dmy[3];
+            return `${year}-${month}-${day}`;
+        }
+    }
+    return null;
+}
+
+function normalizeQualityGateStatus(st) {
+    if (!st) return 'Pendiente';
+    const s = String(st).trim().toLowerCase();
+    if (s.includes('no cumple') || s.includes('no cumplido') || s.includes('bloqueante') || s === 'nok' || s === '✗') {
+        return 'No Cumple';
+    }
+    if (s.includes('cumple') || s.includes('cumplido') || s.includes('aprobado') || s === 'ok' || s === '✓') {
+        return 'Cumple';
+    }
+    if (s.includes('proceso') || s.includes('curso') || s.includes('progreso') || s.includes('⏳')) {
+        return 'En Proceso';
+    }
+    return 'Pendiente';
+}
+
+function normalizeQualityGatePhase(ph, validPhases) {
+    if (!ph) return validPhases[0];
+    const s = String(ph).trim().toLowerCase();
+    const match = validPhases.find(p => p.toLowerCase() === s);
+    if (match) return match;
+    for (const vp of validPhases) {
+        if (s.includes(vp.toLowerCase().substring(0, 4))) return vp;
+    }
+    return validPhases[0];
+}
+
+// --- IMPORT EXCEL: QUALITY GATES (PROY) ---
+
+window.triggerUploadQGExcel = function() {
+    if (!state.selectedProject) {
+        Swal.fire('Atención', 'Selecciona primero un proyecto para actualizar sus Quality Gates.', 'warning');
+        return;
+    }
+    let input = document.getElementById('qg-excel-file-input');
+    if (!input) {
+        input = document.createElement('input');
+        input.id = 'qg-excel-file-input';
+        input.type = 'file';
+        input.accept = '.xlsx, .xls';
+        input.style.display = 'none';
+        document.body.appendChild(input);
+        input.addEventListener('change', window.handleQGExcelUpload);
+    }
+    input.value = '';
+    input.click();
+};
+
+window.handleQGExcelUpload = async function(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file || !state.selectedProject) return;
+
+    Swal.fire({
+        title: 'Leyendo archivo Excel...',
+        text: file.name,
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+    });
+
+    try {
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array', cellDates: true, dateNF: 'yyyy-mm-dd' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+                if (!rawRows || rawRows.length === 0) {
+                    Swal.fire('Error', 'El archivo Excel no contiene datos o la primera hoja está vacía.', 'error');
+                    return;
+                }
+
+                const validPhases = ['Discover', 'Preparar', 'Explorar', 'Realizar', 'Desplegar', 'Ejecutar'];
+                const phaseCounters = {};
+                validPhases.forEach(p => phaseCounters[p] = 0);
+
+                const parsed = [];
+                for (let i = 0; i < rawRows.length; i++) {
+                    const r = rawRows[i];
+                    const getCol = (names) => {
+                        for (const n of names) {
+                            if (r[n] !== undefined && r[n] !== '') return r[n];
+                            const foundKey = Object.keys(r).find(k => k.trim().toLowerCase() === n.toLowerCase());
+                            if (foundKey && r[foundKey] !== undefined && r[foundKey] !== '') return r[foundKey];
+                        }
+                        return '';
+                    };
+
+                    const question = String(getCol(['Pregunta / Criterio de Calidad', 'Pregunta', 'Criterio', 'pregunta', 'question'])).trim();
+                    const area = String(getCol(['Área / Requisito', 'Area / Requisito', 'Área', 'Area', 'Requisito', 'area'])).trim();
+                    const rawPhase = getCol(['Fase', 'fase', 'Phase', 'phase']);
+                    const rawId = String(getCol(['ID Pregunta', 'ID', 'Id', 'codigo', 'Código', 'Codigo'])).trim();
+                    const rawStatus = getCol(['Estado', 'estado', 'Status', 'status']);
+                    const rawDate = getCol(['Fecha Validación', 'Fecha Validacion', 'Fecha', 'fecha_validacion', 'date']);
+                    const rawOwner = String(getCol(['Responsable', 'responsable', 'Owner', 'owner'])).trim();
+                    const rawEvidence = String(getCol(['Evidencia / Observaciones', 'Evidencia', 'evidencia', 'Observaciones', 'observaciones'])).trim();
+                    const rawComentarios = String(getCol(['Comentarios', 'comentarios', 'Comments', 'comments', 'Notas', 'notas'])).trim();
+
+                    if (!question && !area && !rawId) continue;
+
+                    const phase = normalizeQualityGatePhase(rawPhase, validPhases);
+                    phaseCounters[phase] = (phaseCounters[phase] || 0) + 1;
+
+                    let id = rawId;
+                    if (!id) {
+                        const prefix = `QG-${phase.substring(0, 3).toUpperCase()}`;
+                        id = `${prefix}-${String(phaseCounters[phase]).padStart(2, '0')}`;
+                    }
+
+                    const status = normalizeQualityGateStatus(rawStatus);
+                    const dateVal = parseExcelDate(rawDate);
+
+                    parsed.push({
+                        id: id,
+                        phase: phase,
+                        area: area || 'General',
+                        question: question || '(Sin pregunta)',
+                        status: status,
+                        date: dateVal || '',
+                        owner: rawOwner || (state.currentUser?.first_name || 'Jefe de Proyecto'),
+                        evidence: rawEvidence || '',
+                        comentarios: rawComentarios || '',
+                        orden: parsed.length + 1
+                    });
+                }
+
+                if (parsed.length === 0) {
+                    Swal.fire('Error', 'No se encontraron filas con preguntas válidas en el Excel.', 'warning');
+                    return;
+                }
+
+                const countCumple = parsed.filter(p => p.status === 'Cumple').length;
+                const countEnProceso = parsed.filter(p => p.status === 'En Proceso').length;
+                const countPendiente = parsed.filter(p => p.status === 'Pendiente').length;
+                const countNoCumple = parsed.filter(p => p.status === 'No Cumple').length;
+                const phasesPresent = [...new Set(parsed.map(p => p.phase))];
+
+                const confirm = await Swal.fire({
+                    title: '¿Actualizar Quality Gates desde Excel?',
+                    width: '600px',
+                    html: `
+                        <div style="text-align:left; font-size:0.9rem; color:#334155;">
+                            <p style="margin-bottom:8px;">Se han procesado correctamente <strong>${parsed.length}</strong> preguntas del archivo:</p>
+                            <div style="background:#f1f5f9; padding:10px 14px; border-radius:6px; border:1px solid #cbd5e1; margin-bottom:12px;">
+                                <div><i class="fas fa-file-excel" style="color:#10b981;"></i> <strong>${file.name}</strong></div>
+                                <div style="margin-top:6px; font-size:0.82rem; color:#64748b;">
+                                    Fases (${phasesPresent.length}): <strong>${phasesPresent.join(', ')}</strong>
+                                </div>
+                                <div style="margin-top:4px; font-size:0.82rem; display:flex; gap:12px; flex-wrap:wrap;">
+                                    <span style="color:#15803d; font-weight:700;">✓ Cumple: ${countCumple}</span>
+                                    <span style="color:#b45309; font-weight:700;">⏳ En Proceso: ${countEnProceso}</span>
+                                    <span style="color:#64748b; font-weight:700;">⚪ Pendiente: ${countPendiente}</span>
+                                    <span style="color:#b91c1c; font-weight:700;">✗ No Cumple: ${countNoCumple}</span>
+                                </div>
+                            </div>
+                            <div style="background:#fef2f2; border-left:4px solid #ef4444; padding:8px 12px; border-radius:4px; font-size:0.8rem; color:#991b1b;">
+                                <i class="fas fa-exclamation-triangle"></i> <strong>Aviso:</strong> Esta operación sincronizará la base de datos reemplazando las preguntas del proyecto actual (<strong>${state.selectedProject.id_proyecto || state.selectedProject.name}</strong>) con las contenidas en este Excel.
+                            </div>
+                        </div>
+                    `,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, actualizar Base de Datos',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#00897b'
+                });
+
+                if (!confirm.isConfirmed) return;
+
+                Swal.fire({
+                    title: 'Actualizando base de datos...',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+
+                const projectId = state.selectedProject.id;
+
+                if (supabaseClient) {
+                    const { error: delErr } = await supabaseClient
+                        .from('project_quality_gates')
+                        .delete()
+                        .eq('project_id', projectId);
+
+                    if (delErr) {
+                        Swal.fire('Error al limpiar registros previos', delErr.message, 'error');
+                        return;
+                    }
+
+                    const dbRows = parsed.map((q, idx) => ({
+                        project_id: projectId,
+                        codigo: q.id,
+                        fase: q.phase,
+                        area: q.area,
+                        pregunta: q.question,
+                        estado: q.status,
+                        fecha_validacion: q.date ? q.date : null,
+                        responsable: q.owner,
+                        evidencia: q.evidence,
+                        comentarios: q.comentarios || '',
+                        orden: idx + 1
+                    }));
+
+                    const { error: insErr } = await supabaseClient
+                        .from('project_quality_gates')
+                        .insert(dbRows);
+
+                    if (insErr) {
+                        Swal.fire('Error al insertar nuevos registros', insErr.message, 'error');
+                        return;
+                    }
+                }
+
+                window.currentProjectQGQuestions = parsed;
+                localStorage.setItem(`altim_qg_questions_${projectId}`, JSON.stringify(parsed));
+
+                Toast.fire({ icon: 'success', title: `${parsed.length} preguntas de Quality Gate actualizadas con éxito` });
+                loadProjectQualityGatesTable();
+            } catch (err) {
+                console.error('Error parseando Excel QG:', err);
+                Swal.fire('Error', 'No se pudo leer el archivo Excel: ' + (err.message || err), 'error');
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    } catch (outerErr) {
+        Swal.fire('Error', outerErr.message, 'error');
+    }
 };
 
 // --- UTILITIES ---
@@ -2764,11 +3905,13 @@ async function loadGeneralUATs(existingMasterUATs = null) {
     const uniqueLobs = [...new Set(data.map(u => u.id_lob).filter(v => v))].sort();
     const uniqueBps = [...new Set(data.map(u => u.id_bp).filter(v => v))].sort();
     const uniqueScopes = [...new Set(data.map(u => u.proceso_scope_item).filter(v => v))].sort();
+    const uniqueAcciones = [...new Set(data.map(u => u.accion).filter(v => v))].sort();
 
     document.getElementById('uat-filters-container').innerHTML = `
         ${renderMultiSelectFilter('uat-filter-lob', 'Filtrar LOB', uniqueLobs)}
         ${renderMultiSelectFilter('uat-filter-bp', 'Filtrar BP', uniqueBps)}
         ${renderMultiSelectFilter('uat-filter-scope', 'Filtrar Scope Item', uniqueScopes)}
+        ${uniqueAcciones.length > 0 ? renderMultiSelectFilter('uat-filter-accion', 'Filtrar Acción', uniqueAcciones) : ''}
     `;
 
     state.filteredUATs = data;
@@ -2780,30 +3923,70 @@ window.createNewUAT = async function () {
     const { value: formValues } = await Swal.fire({
         title: 'Nuevo Paso UAT Ad-Hoc',
         html: `
-            <div style="text-align: left;">
-                <label>LOB</label>
-                <input id="swal-lob" class="swal2-input" placeholder="Ej: FI, SD...">
-                <label>Caso/Paso ID</label>
-                <input id="swal-casop" class="swal2-input" placeholder="Ej: CP-001">
-                <label>BP (Best Practice)</label>
-                <input id="swal-bp" class="swal2-input" placeholder="Ej: 1J0">
-                <label>Scope Item / Proceso</label>
-                <input id="swal-scope" class="swal2-input">
-                <label>Escenario</label>
-                <textarea id="swal-escenario" class="swal2-textarea"></textarea>
-                <label>Pasos Detallados</label>
-                <textarea id="swal-pasos" class="swal2-textarea"></textarea>
+            <div style="text-align: left; max-height: 70vh; overflow-y: auto; padding: 5px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label style="font-size:0.75rem; font-weight:bold; color:#555;">LOB</label>
+                        <input id="swal-lob" class="swal2-input" style="width:100%; margin:4px 0 10px 0; font-size:0.85rem;" placeholder="Ej: FI, SD, MM...">
+                    </div>
+                    <div>
+                        <label style="font-size:0.75rem; font-weight:bold; color:#555;">Caso/Paso ID</label>
+                        <input id="swal-casop" class="swal2-input" style="width:100%; margin:4px 0 10px 0; font-size:0.85rem;" placeholder="Ej: CP-001">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label style="font-size:0.75rem; font-weight:bold; color:#555;">BP (Best Practice)</label>
+                        <input id="swal-bp" class="swal2-input" style="width:100%; margin:4px 0 10px 0; font-size:0.85rem;" placeholder="Ej: 1J0, BD9...">
+                    </div>
+                    <div>
+                        <label style="font-size:0.75rem; font-weight:bold; color:#555;">Scope Item / Proceso</label>
+                        <input id="swal-scope" class="swal2-input" style="width:100%; margin:4px 0 10px 0; font-size:0.85rem;" placeholder="Ej: General Ledger...">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label style="font-size:0.75rem; font-weight:bold; color:#555;">Acción</label>
+                        <input id="swal-accion" class="swal2-input" style="width:100%; margin:4px 0 10px 0; font-size:0.85rem;" placeholder="Ej: Crear, Configurar, Ejecutar...">
+                    </div>
+                    <div>
+                        <label style="font-size:0.75rem; font-weight:bold; color:#555;">Objeto</label>
+                        <input id="swal-objeto" class="swal2-input" style="width:100%; margin:4px 0 10px 0; font-size:0.85rem;" placeholder="Ej: Factura, Pedido, Job...">
+                    </div>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label style="font-size:0.75rem; font-weight:bold; color:#555;">App Fiori</label>
+                    <input id="swal-app-fiori" class="swal2-input" style="width:100%; margin:4px 0 10px 0; font-size:0.85rem;" placeholder="Ej: Manage Purchase Orders / F0842A...">
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label style="font-size:0.75rem; font-weight:bold; color:#555;">Descripción de la Prueba</label>
+                    <textarea id="swal-desc-prueba" class="swal2-textarea" style="width:100%; margin:4px 0; font-size:0.85rem; height:60px;" placeholder="Descripción específica de la prueba..."></textarea>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label style="font-size:0.75rem; font-weight:bold; color:#555;">Escenario</label>
+                    <textarea id="swal-escenario" class="swal2-textarea" style="width:100%; margin:4px 0; font-size:0.85rem; height:60px;"></textarea>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label style="font-size:0.75rem; font-weight:bold; color:#555;">Pasos Detallados</label>
+                    <textarea id="swal-pasos" class="swal2-textarea" style="width:100%; margin:4px 0; font-size:0.85rem; height:60px;"></textarea>
+                </div>
             </div>
         `,
+        width: '600px',
         focusConfirm: false,
         showCancelButton: true,
         confirmButtonText: 'Añadir a Checklist',
+        cancelButtonText: 'Cancelar',
         preConfirm: () => {
             return {
                 id_lob: document.getElementById('swal-lob').value,
                 id_casop: document.getElementById('swal-casop').value,
                 id_bp: document.getElementById('swal-bp').value,
                 proceso_scope_item: document.getElementById('swal-scope').value,
+                accion: document.getElementById('swal-accion').value,
+                objeto: document.getElementById('swal-objeto').value,
+                descripcion_prueba: document.getElementById('swal-desc-prueba').value,
+                app_fiori: document.getElementById('swal-app-fiori').value,
                 escenario: document.getElementById('swal-escenario').value,
                 pasos_detallados: document.getElementById('swal-pasos').value
             }
@@ -2846,12 +4029,14 @@ window.filterUATs = function () {
     const selectedLobs = getCheckedValues('uat-filter-lob');
     const selectedBps = getCheckedValues('uat-filter-bp');
     const selectedScopes = getCheckedValues('uat-filter-scope');
+    const selectedAcciones = getCheckedValues('uat-filter-accion');
 
     const filterFunc = u => {
         const matchLob = selectedLobs.length === 0 || selectedLobs.includes(u.id_lob);
         const matchBp = selectedBps.length === 0 || selectedBps.includes(u.id_bp);
         const matchScope = selectedScopes.length === 0 || selectedScopes.includes(u.proceso_scope_item);
-        return matchLob && matchBp && matchScope;
+        const matchAccion = selectedAcciones.length === 0 || selectedAcciones.includes(u.accion);
+        return matchLob && matchBp && matchScope && matchAccion;
     };
 
     state.filteredUATs = state.generalUATs.filter(filterFunc);
@@ -2914,23 +4099,27 @@ function renderUATsTable(genData, customData = []) {
             </div>
         </div>
         <div style="overflow-x: auto; width: 100%;">
-            <table class="alv-table" style="min-width: 1600px; border-collapse: collapse;">
+            <table class="alv-table" style="min-width: 2300px; border-collapse: collapse;">
                 <thead>
                     <tr>
                         <th style="width: 50px; text-align: center; position: sticky; left: 0; background: #e3f2fd; z-index: 10;">
                             <input type="checkbox" id="uat-mass-checkbox" onchange="toggleAllUATs(this)" title="Seleccionar/Deseleccionar esta página" ${allPageSelected ? 'checked' : ''}>
                         </th>
-                        <th>LOB</th>
-                        <th>Caso/Paso</th>
-                        <th>BP</th>
-                        <th>Scope Item</th>
-                        <th style="min-width: 150px;">Escenario</th>
+                        <th style="width: 120px;">LOB</th>
+                        <th style="width: 110px;">Caso/Paso</th>
+                        <th style="width: 70px;">BP</th>
+                        <th style="width: 170px;">Scope Item</th>
+                        <th style="width: 120px; background: #e3f2fd;">Acción</th>
+                        <th style="width: 150px; background: #e3f2fd;">Objeto</th>
+                        <th style="min-width: 220px; background: #e3f2fd;">Descripción Prueba</th>
+                        <th style="width: 180px; background: #e3f2fd;">App Fiori</th>
+                        <th style="min-width: 180px;">Escenario</th>
                         <th style="min-width: 200px;">Actividades Proceso</th>
-                        <th style="min-width: 200px;">Precondiciones</th>
-                        <th style="min-width: 250px;">Pasos Detallados</th>
-                        <th style="min-width: 150px;">Datos Prueba</th>
-                        <th style="min-width: 200px;">Resultado Esperado</th>
-                        <th style="position: sticky; right: 0; background: #e3f2fd; z-index: 10; text-align: center;">Acciones</th>
+                        <th style="min-width: 180px;">Precondiciones</th>
+                        <th style="min-width: 220px;">Pasos Detallados</th>
+                        <th style="min-width: 140px;">Datos Prueba</th>
+                        <th style="min-width: 180px;">Resultado Esperado</th>
+                        <th style="position: sticky; right: 0; background: #e3f2fd; z-index: 10; text-align: center; width: 70px;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -2946,6 +4135,18 @@ function renderUATsTable(genData, customData = []) {
                             </td>
                             <td>${u.id_bp || '-'}</td>
                             <td>${u.proceso_scope_item || '-'}</td>
+                            <td><b>${u.accion || '-'}</b></td>
+                            <td>${u.objeto || '-'}</td>
+                            <td>
+                                <div style="font-size: 0.85rem; max-height: 2.5rem; overflow: hidden; text-overflow: ellipsis;" title="${(u.descripcion_prueba || '').replace(/"/g, '&quot;')}">
+                                    ${u.descripcion_prueba || '-'}
+                                </div>
+                            </td>
+                            <td>
+                                <div style="font-size: 0.85rem; max-height: 2.5rem; overflow: hidden; text-overflow: ellipsis;" title="${(u.app_fiori || '').replace(/"/g, '&quot;')}">
+                                    ${u.app_fiori || '-'}
+                                </div>
+                            </td>
                             <td>
                                 <div style="font-size: 0.85rem; max-height: 2.5rem; overflow: hidden; text-overflow: ellipsis;" title="${(u.escenario || '').replace(/"/g, '&quot;')}">
                                     ${u.escenario || '-'}
@@ -3020,24 +4221,9 @@ document.addEventListener('click', function (e) {
 });
 
 function filterUATs() {
-    const getCheckedValues = (id) => {
-        const checkboxes = document.querySelectorAll(`.${id}-checkbox:checked`);
-        return Array.from(checkboxes).map(cb => cb.value);
-    };
-
-    const selectedLobs = getCheckedValues('uat-filter-lob');
-    const selectedBps = getCheckedValues('uat-filter-bp');
-    const selectedScopes = getCheckedValues('uat-filter-scope');
-
-    state.filteredUATs = state.generalUATs.filter(u => {
-        const matchLob = selectedLobs.length === 0 || selectedLobs.includes(u.id_lob);
-        const matchBp = selectedBps.length === 0 || selectedBps.includes(u.id_bp);
-        const matchScope = selectedScopes.length === 0 || selectedScopes.includes(u.proceso_scope_item);
-        return matchLob && matchBp && matchScope;
-    });
-
-    state.uatCurrentPage = 1;
-    renderUATsTable(state.filteredUATs);
+    if (typeof window.filterUATs === 'function') {
+        window.filterUATs();
+    }
 }
 
 window.toggleUATCheckbox = function (cb) {
@@ -3081,6 +4267,10 @@ async function saveSelectedUATs() {
         id_casop: u.id_casop,
         id_bp: u.id_bp,
         proceso_scope_item: u.proceso_scope_item,
+        accion: u.accion || null,
+        objeto: u.objeto || null,
+        descripcion_prueba: u.descripcion_prueba || null,
+        app_fiori: u.app_fiori || null,
         escenario: u.escenario,
         actividades_proceso: u.actividades_proceso,
         precondiciones: u.precondiciones,
@@ -3131,7 +4321,8 @@ async function saveSelectedUATs() {
 }
 
 window.viewUATDetails = function (id) {
-    const uat = [...state.generalUATs, ...state.customUATs].find(u => u.id.toString() === id.toString());
+    const list = [...(state.generalUATs || []), ...(state.customUATs || []), ...(state.trackingUATs || [])];
+    const uat = list.find(u => u && u.id && u.id.toString() === id.toString());
     if (!uat) return;
 
     Swal.fire({
@@ -3140,11 +4331,35 @@ window.viewUATDetails = function (id) {
                 </div>`,
         html: `
             <div style="text-align: left; max-height: 75vh; overflow-y: auto; padding: 5px 10px 5px 0;">
-                <div style="display: flex; gap: 20px; margin-bottom: 25px; font-size: 0.9rem; color: #666;">
+                <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 15px; font-size: 0.9rem; color: #666; background: #f8f9fa; padding: 10px 14px; border-radius: 6px; border: 1px solid #e9ecef;">
                     <span><b style="color:#333">LOB:</b> ${uat.id_lob || '-'}</span>
                     <span><b style="color:#333">BP:</b> ${uat.id_bp || '-'}</span>
                     <span><b style="color:#333">Scope Item:</b> ${uat.proceso_scope_item || '-'}</span>
                 </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 18px; background: #f0f7ff; border: 1px solid #bbdefb; border-radius: 6px; padding: 12px;">
+                    <div>
+                        <label style="display:block; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:#1565c0; margin-bottom:3px; font-weight:700;">Acción</label>
+                        <div style="font-size: 0.9rem; font-weight: 600; color: #0d47a1;">${uat.accion || '-'}</div>
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:#1565c0; margin-bottom:3px; font-weight:700;">Objeto</label>
+                        <div style="font-size: 0.9rem; font-weight: 600; color: #0d47a1;">${uat.objeto || '-'}</div>
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:#1565c0; margin-bottom:3px; font-weight:700;">App Fiori</label>
+                        <div style="font-size: 0.85rem; color: #1565c0;">${uat.app_fiori || '-'}</div>
+                    </div>
+                </div>
+
+                ${uat.descripcion_prueba ? `
+                <div style="margin-bottom: 20px;">
+                    <label style="display:block; font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; color:#999; margin-bottom:8px; font-weight:700;">Descripción de la Prueba</label>
+                    <div style="font-size: 0.95rem; line-height: 1.6; color: #333; padding: 10px 14px; background: #fafafa; border-left: 3px solid #00bcd4; border-radius: 4px; border: 1px solid #eee; border-left-width: 3px;">
+                        ${(uat.descripcion_prueba || '-').replace(/\n/g, '<br>')}
+                    </div>
+                </div>
+                ` : ''}
 
                 <div style="margin-bottom: 20px;">
                     <label style="display:block; font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; color:#999; margin-bottom:8px; font-weight:700;">Escenario / Contexto</label>
@@ -4340,8 +5555,8 @@ window.loadMasterTable = function (tableName) {
             fields: ['id_lob', 'denominacion_bp', 'id_bp']
         },
         'master_uats': {
-            headers: ['ID Proy', 'LOB', 'ID CasoP', 'ID BP', 'Proceso', 'Escenario', 'Actividades', 'Precond.', 'Detalles', 'Prueba', 'R.Esp.', 'RACI', 'Rol Resp.', 'Prueba Tipo'],
-            fields: ['project_id', 'id_lob', 'id_casop', 'id_bp', 'proceso_scope_item', 'escenario', 'actividades_proceso', 'precondiciones', 'pasos_detallados', 'datos_prueba', 'resultado_esperado', 'raci', 'rol_perfil_responsable', 'tipo_prueba']
+            headers: ['ID Proy', 'LOB', 'ID CasoP', 'ID BP', 'Proceso', 'Acción', 'Objeto', 'Desc. Prueba', 'App Fiori', 'Escenario', 'Actividades', 'Precond.', 'Detalles', 'Prueba', 'R.Esp.', 'RACI', 'Rol Resp.', 'Prueba Tipo'],
+            fields: ['project_id', 'id_lob', 'id_casop', 'id_bp', 'proceso_scope_item', 'accion', 'objeto', 'descripcion_prueba', 'app_fiori', 'escenario', 'actividades_proceso', 'precondiciones', 'pasos_detallados', 'datos_prueba', 'resultado_esperado', 'raci', 'rol_perfil_responsable', 'tipo_prueba']
         },
         'master_questionnaire': {
             headers: ['LOB', 'Relevant?', 'Scope Ref', 'SAP ID', 'Area', 'Question', 'Level', 'Solution'],
@@ -4456,7 +5671,7 @@ window.addMasterRecord = async function() {
         'master_jira_categories': ['category_name'],
         'master_project_types': ['type_name'],
         'master_best_practice': ['id_lob', 'denominacion_bp', 'id_bp'],
-        'master_uats': ['id_lob', 'id_casop', 'id_bp', 'proceso_scope_item', 'escenario', 'actividades_proceso', 'raci'],
+        'master_uats': ['id_lob', 'id_casop', 'id_bp', 'proceso_scope_item', 'accion', 'objeto', 'descripcion_prueba', 'app_fiori', 'escenario', 'actividades_proceso', 'raci'],
         'master_questionnaire': ['lob_id', 'project_relevant', 'sap_id', 'area', 'question', 'level'],
         'master_bpml': ['bpml_id', 'id_e2e', 'negocio', 'nombre_proceso_l3', 'sprint', 'priority'],
         'master_lobs': ['id_lob', 'id_idioma'],
@@ -5259,33 +6474,1148 @@ async function renderGESModule() {
 
     elements.moduleContent.innerHTML = `
         ${renderPhaseHeader('Gestión de Proyecto (GES)')}
-        <div class="collapsible-wrapper" style="border-left: 4px solid var(--sap-blue);">
-            <div class="collapsible-header" onclick="toggleSection(this)">
-                <h3 style="color:var(--sap-blue); display:flex; align-items:center; gap:10px;">
-                    <i class="fas fa-briefcase"></i> SEGUIMIENTO Y GESTIÓN
-                </h3>
-                <i class="fas fa-plus-circle toggle-icon"></i>
-            </div>
-            <div class="collapsible-content">
-                <p class="section-subtitle" style="margin-bottom: 1rem; font-size: 0.85rem;">Gestión de comités, actas y documentación de seguimiento.</p>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-top: 1rem;">
-                    ${types.map(type => `
-                        <button class="btn btn-outline btn-doc-type" onclick="openDocumentModal('GES', '${type}')" style="min-height: 80px; position:relative; background-color: #e3f2fd;">
-                            ${counts[type] ? `<div class="doc-count-badge">${counts[type]}</div>` : ''}
-                            <i class="fas fa-file-contract fa-2x" style="margin-bottom: 8px; opacity:0.3;"></i>
-                            <div style="font-weight:700; font-size:0.75rem;">${type}</div>
-                        </button>
-                    `).join('')}
+        <div class="ges-module-layout" style="display: flex; flex-direction: column; gap: 0.5rem;">
+            
+            <!-- PARTE 1: SEGUIMIENTO Y GESTIÓN -->
+            <div class="collapsible-wrapper" style="border-left: 4px solid var(--sap-blue);">
+                <div class="collapsible-header" onclick="toggleSection(this)">
+                    <h3 style="color:var(--sap-blue); display:flex; align-items:center; gap:10px;">
+                        <i class="fas fa-briefcase"></i> 1: SEGUIMIENTO Y GESTIÓN
+                    </h3>
+                    <i class="fas fa-plus-circle toggle-icon"></i>
                 </div>
-                
-                <div style="margin-top: 2rem;">
-                    <div id="ges-doc-table-container"></div>
+                <div class="collapsible-content">
+                    <p class="section-subtitle" style="margin-bottom: 1rem; font-size: 0.85rem;">Gestión de comités, actas y documentación de seguimiento.</p>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                        ${types.map(type => `
+                            <button class="btn btn-outline btn-doc-type" onclick="openDocumentModal('GES', '${type}')" style="min-height: 80px; position:relative; background-color: #e3f2fd;">
+                                ${counts[type] ? `<div class="doc-count-badge">${counts[type]}</div>` : ''}
+                                <i class="fas fa-file-contract fa-2x" style="margin-bottom: 8px; opacity:0.3;"></i>
+                                <div style="font-weight:700; font-size:0.75rem;">${type}</div>
+                            </button>
+                        `).join('')}
+                    </div>
+                    
+                    <div style="margin-top: 2rem;">
+                        <div id="ges-doc-table-container"></div>
+                    </div>
                 </div>
             </div>
+
+            <!-- PARTE 2: QR - QUALITY GATE OPERACIONES -->
+            ${isItemRestricted('ges', '2: QR - Quality Gate Operaciones') || isItemRestricted('ges', 'QR - Quality Gate Operaciones') || isItemRestricted('ges', 'Quality Gate Operaciones') ? '' : `
+            <div class="collapsible-wrapper" style="border-left: 4px solid #ff9800;">
+                <div class="collapsible-header" onclick="toggleSection(this)">
+                    <h3 style="color:#ff9800; display:flex; align-items:center; gap:10px;">
+                        <i class="fas fa-shield-alt"></i> 2: QR - Quality Gate Operaciones
+                    </h3>
+                    <i class="fas fa-plus-circle toggle-icon"></i>
+                </div>
+                <div class="collapsible-content">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap:wrap; gap:10px;">
+                        <p class="section-subtitle" style="margin: 0; font-size: 0.85rem;">
+                            Cuestionario de criterios y preguntas de calidad para pase a operaciones y soporte AMS agrupados por fase.
+                        </p>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                            <button class="btn btn-outline" onclick="window.exportQROperacionesToExcel()" style="width:auto; padding:0.4rem 0.8rem; font-size:0.85rem;">
+                                <i class="fas fa-file-excel"></i> Descargar Excel
+                            </button>
+                            <button class="btn btn-outline" onclick="window.triggerUploadQRExcel()" style="width:auto; padding:0.4rem 0.8rem; font-size:0.85rem; border-color:#ff9800; color:#ff9800;" title="Actualizar criterios operativos del proyecto desde un archivo Excel">
+                                <i class="fas fa-file-upload"></i> Actualizar desde Excel
+                            </button>
+                            <button class="btn" onclick="window.openAddQRQuestionModal()" style="background:#ff9800; color:white; width:auto; padding:0.4rem 0.8rem; font-size:0.85rem;">
+                                <i class="fas fa-plus"></i> Añadir Pregunta
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-container" id="ges-qr-table" style="margin-top: 0.5rem;">
+                        <p style="text-align:center; padding:2rem; color:#666;"><i class="fas fa-spinner fa-spin"></i> Cargando Quality Gate Operaciones...</p>
+                    </div>
+                </div>
+            </div>
+            `}
         </div>
     `;
     loadPhaseDocumentsTable('GES', 'ges-doc-table-container');
+    loadOperationsQualityGateTable();
 }
+
+// --- QUALITY GATE OPERACIONES (GES - PARTE 2): CUESTIONARIO POR FASES ---
+
+const QR_PHASE_CONFIG = {
+    'Preparar': { color: '#16a34a', label: 'Preparar', gate: 'QR-PRE' },
+    'Explorar': { color: '#ea580c', label: 'Explorar', gate: 'QR-EXP' },
+    'Realizar': { color: '#9333ea', label: 'Realizar', gate: 'QR-REA' },
+    'Desplegar': { color: '#dc2626', label: 'Desplegar', gate: 'QR-DEY' },
+    'Ejecutar': { color: '#0d9488', label: 'Ejecutar', gate: 'QR-EJE' },
+    'Discover': { color: '#0284c7', label: 'Discover', gate: 'QR-DIS' }
+};
+
+const DEFAULT_QR_QUESTIONS = [
+    // --- PREPARAR (QR-PRE) ---
+    { id: 'QR-PRE-01', phase: 'Preparar', area: 'Gobernanza Operativa', question: '¿Se han identificado los interlocutores del equipo de Operaciones / AMS y la matriz de escalado?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Service Manager / PM' },
+    { id: 'QR-PRE-02', phase: 'Preparar', area: 'Herramientas de Soporte', question: '¿Están definidos los accesos iniciales, VPN y herramientas de ticketing para el equipo de soporte?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Lead Técnico / BASIS' },
+    { id: 'QR-PRE-03', phase: 'Preparar', area: 'Requisitos de Operación', question: '¿Se han recopilado los requerimientos operativos no funcionales (horarios de servicio, criticidad)?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Responsable AMS' },
+
+    // --- EXPLORAR (QR-EXP) ---
+    { id: 'QR-EXP-01', phase: 'Explorar', area: 'Arquitectura e Interfaces', question: '¿Están inventariadas y documentadas las interfaces externas y procesos batch para su mantenimiento?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Arquitecto Técnico' },
+    { id: 'QR-EXP-02', phase: 'Explorar', area: 'Seguridad y Roles', question: '¿Está definida la estrategia de gestión de usuarios y roles de administración técnica / BASIS?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Seguridad / BASIS' },
+    { id: 'QR-EXP-03', phase: 'Explorar', area: 'Modelo de Soporte N1/N2/N3', question: '¿Está consensuado el flujo de atención a incidencias y responsabilidades entre Nivel 1, 2 y 3?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Service Manager / PMO' },
+
+    // --- REALIZAR (QR-REA) ---
+    { id: 'QR-REA-01', phase: 'Realizar', area: 'Acuerdo de SLAs', question: '¿Se han definido y acordado los SLAs operativos (tiempos de respuesta y resolución por severidad)?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Service Manager / PMO' },
+    { id: 'QR-REA-02', phase: 'Realizar', area: 'Documentación Técnica de Entrega', question: '¿Están redactados los manuales operativos, parametrizaciones e inventario de desarrollos (WRICEF)?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Equipo Técnico / Consultoría' },
+    { id: 'QR-REA-03', phase: 'Realizar', area: 'Capacitación al Equipo de Operaciones', question: '¿Se ha realizado el traspaso de conocimiento técnico y funcional al equipo receptor de soporte?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Líder Funcional / AMS' },
+    { id: 'QR-REA-04', phase: 'Realizar', area: 'Backup y Recuperación', question: '¿Están validadas las políticas de copias de seguridad, retención y plan de contingencia?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'BASIS / Infraestructura' },
+
+    // --- DESPLEGAR (QR-DEY) ---
+    { id: 'QR-DEY-01', phase: 'Desplegar', area: 'Canal de Guardia Go-Live', question: '¿Está operativo el canal de guardia 24x7 / soporte intensivo para el arranque en productivo?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Jefe de Proyecto / AMS' },
+    { id: 'QR-DEY-02', phase: 'Desplegar', area: 'Credenciales y Accesos PRD', question: '¿Dispone el equipo de soporte de los accesos y credenciales de emergencia (Firefighter) en PRD?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'BASIS / Seguridad' },
+    { id: 'QR-DEY-03', phase: 'Desplegar', area: 'Acta de Traspaso / Handover', question: '¿Se ha formalizado la firma del Acta de Traspaso a Operaciones y aceptación operativa?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Comité de Dirección / Cliente' },
+    { id: 'QR-DEY-04', phase: 'Desplegar', area: 'Comités de Hypercare', question: '¿Están calendarizadas las reuniones diarias de seguimiento de incidencias durante el Hypercare?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Service Manager / PMO' },
+
+    // --- EJECUTAR (QR-EJE) ---
+    { id: 'QR-EJE-01', phase: 'Ejecutar', area: 'Estabilidad Operativa Post-Arranque', question: '¿Cero incidencias críticas abiertas que bloqueen la operación del negocio en soporte ordinario?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Equipo Técnico / QA' },
+    { id: 'QR-EJE-02', phase: 'Ejecutar', area: 'Cumplimiento de SLAs', question: '¿Se están cumpliendo los niveles de servicio acordados (>95% SLAs de resolución y respuesta)?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Service Manager' },
+    { id: 'QR-EJE-03', phase: 'Ejecutar', area: 'Comité Mensual de Servicio', question: '¿Se realizan comités periódicos de seguimiento del servicio con métricas de incidencias y mejoras?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Responsable AMS / Cliente' },
+    { id: 'QR-EJE-04', phase: 'Ejecutar', area: 'Informe de Cierre de Garantía', question: '¿Se ha emitido y aprobado el informe de fin de periodo de garantía y paso a régimen ordinario?', status: 'Pendiente', evidence: '', comentarios: '', date: '', owner: 'Comité de Dirección' }
+];
+
+window.qrFilterPhase = window.qrFilterPhase || 'All';
+window.qrFilterStatus = window.qrFilterStatus || 'All';
+window.qrSearchQuery = window.qrSearchQuery || '';
+window.qrGroupByPhase = window.qrGroupByPhase !== undefined ? window.qrGroupByPhase : true;
+window.qrCollapsedGroups = window.qrCollapsedGroups || {};
+
+async function ensureProjectQROperaciones(projectId) {
+    if (!supabaseClient || !projectId) return;
+
+    try {
+        const { data: existing, error } = await supabaseClient
+            .from('project_qr_operaciones')
+            .select('codigo')
+            .eq('project_id', projectId);
+
+        if (error) {
+            console.error('Error comprobando project_qr_operaciones:', error);
+            return;
+        }
+
+        if (!existing || existing.length === 0) {
+            let localQuestions = null;
+            try {
+                const raw = localStorage.getItem(`altim_qr_questions_${projectId}`);
+                if (raw) localQuestions = JSON.parse(raw);
+            } catch (e) {}
+
+            const sourceList = (localQuestions && Array.isArray(localQuestions) && localQuestions.length > 0)
+                ? localQuestions
+                : DEFAULT_QR_QUESTIONS;
+
+            const toInsert = sourceList.map((q, idx) => ({
+                project_id: projectId,
+                codigo: q.id,
+                fase: q.phase,
+                area: q.area || '',
+                pregunta: q.question,
+                estado: (q.status === 'Cumplido') ? 'Cumple' : ((q.status === 'No Cumplido') ? 'No Cumple' : (q.status || 'Pendiente')),
+                evidencia: q.evidence || '',
+                comentarios: q.comentarios || '',
+                fecha_validacion: q.date ? q.date : null,
+                responsable: q.owner || '',
+                orden: idx + 1
+            }));
+
+            const { error: insErr } = await supabaseClient
+                .from('project_qr_operaciones')
+                .insert(toInsert);
+
+            if (insErr) {
+                console.error('Error insertando criterios por defecto en project_qr_operaciones:', insErr);
+            }
+        }
+    } catch (err) {
+        console.error('Excepción en ensureProjectQROperaciones:', err);
+    }
+}
+
+async function getProjectQRQuestions() {
+    if (!state.selectedProject) return [];
+    const projectId = state.selectedProject.id;
+    const storageKey = `altim_qr_questions_${projectId}`;
+
+    if (supabaseClient) {
+        await ensureProjectQROperaciones(projectId);
+        const { data, error } = await supabaseClient
+            .from('project_qr_operaciones')
+            .select('*')
+            .eq('project_id', projectId)
+            .order('orden', { ascending: true })
+            .order('id', { ascending: true });
+
+        if (!error && data && data.length > 0) {
+            const mapped = data.map(r => ({
+                db_id: r.id,
+                id: r.codigo,
+                phase: r.fase,
+                area: r.area || '',
+                question: r.pregunta || '',
+                status: (r.estado === 'Cumplido') ? 'Cumple' : ((r.estado === 'No Cumplido') ? 'No Cumple' : (r.estado || 'Pendiente')),
+                evidence: r.evidencia || '',
+                comentarios: r.comentarios || '',
+                date: r.fecha_validacion ? String(r.fecha_validacion).split('T')[0] : '',
+                owner: r.responsable || '',
+                order_idx: r.orden || 0
+            }));
+            localStorage.setItem(storageKey, JSON.stringify(mapped));
+            window.currentProjectQRQuestions = mapped;
+            return mapped;
+        }
+    }
+
+    let list = null;
+    try {
+        const raw = localStorage.getItem(storageKey);
+        if (raw) list = JSON.parse(raw);
+    } catch (e) { list = null; }
+
+    if (!list || !Array.isArray(list) || list.length === 0) {
+        list = JSON.parse(JSON.stringify(DEFAULT_QR_QUESTIONS));
+        try {
+            const legacyKey = `altim_qr_eval_${state.selectedProject.id}`;
+            const legacyRaw = localStorage.getItem(legacyKey);
+            if (legacyRaw) {
+                const legacy = JSON.parse(legacyRaw);
+                if (legacy['QR-01']) {
+                    const match = list.find(q => q.id === 'QR-REA-01' || q.id === 'QR-PRE-01');
+                    if (match && legacy['QR-01'].status) match.status = legacy['QR-01'].status === 'Cumplido' ? 'Cumple' : legacy['QR-01'].status;
+                }
+            }
+        } catch (err) {}
+        localStorage.setItem(storageKey, JSON.stringify(list));
+    }
+    window.currentProjectQRQuestions = list;
+    return list;
+}
+
+function saveProjectQRQuestions(list) {
+    if (!state.selectedProject) return;
+    const storageKey = `altim_qr_questions_${state.selectedProject.id}`;
+    localStorage.setItem(storageKey, JSON.stringify(list));
+    window.currentProjectQRQuestions = list;
+}
+
+const QR_STATUS_CONFIG = {
+    'Cumple': { bg: '#dcfce7', text: '#15803d', border: '#86efac', icon: 'fa-check-circle', label: 'Cumple' },
+    'Cumplido': { bg: '#dcfce7', text: '#15803d', border: '#86efac', icon: 'fa-check-circle', label: 'Cumple' },
+    'En Proceso': { bg: '#fef3c7', text: '#b45309', border: '#fde68a', icon: 'fa-clock', label: 'En Proceso' },
+    'Pendiente': { bg: '#f1f5f9', text: '#64748b', border: '#cbd5e1', icon: 'fa-hourglass-start', label: 'Pendiente' },
+    'No Cumple': { bg: '#fee2e2', text: '#b91c1c', border: '#fca5a5', icon: 'fa-times-circle', label: 'No Cumple' },
+    'No Cumplido': { bg: '#fee2e2', text: '#b91c1c', border: '#fca5a5', icon: 'fa-times-circle', label: 'No Cumple' }
+};
+
+async function loadOperationsQualityGateTable() {
+    if (!state.selectedProject) return;
+    const container = document.getElementById('ges-qr-table');
+    if (!container) return;
+
+    if (!window.currentProjectQRQuestions || window.currentProjectQRQuestions.length === 0) {
+        container.innerHTML = `<p style="text-align:center; padding:2rem; color:#64748b;"><i class="fas fa-spinner fa-spin"></i> Cargando Quality Gate Operaciones...</p>`;
+    }
+
+    const allQuestions = await getProjectQRQuestions();
+    const phaseKeys = ['Preparar', 'Explorar', 'Realizar', 'Desplegar', 'Ejecutar'];
+
+    // Dynamic check on incidents if available
+    let criticalCount = 0;
+    if (state.incidents && Array.isArray(state.incidents)) {
+        criticalCount = state.incidents.filter(i => {
+            const matchProj = !i.proyecto_id || String(i.proyecto_id) === String(state.selectedProject.id) || String(i.proyecto) === String(state.selectedProject.name);
+            const isOpen = !['10 Cerrada', '11 Descartada', '12 Duplicada'].includes(i.estado);
+            const isCrit = (i.prioridad || '').toLowerCase().includes('crítica') || (i.prioridad || '').toLowerCase().includes('critica');
+            return matchProj && isOpen && isCrit;
+        }).length;
+    }
+
+    // Stats per phase
+    const phaseStats = {};
+    phaseKeys.forEach(p => {
+        const inPhase = allQuestions.filter(q => q.phase === p);
+        const done = inPhase.filter(q => q.status === 'Cumple' || q.status === 'Cumplido').length;
+        const total = inPhase.length;
+        phaseStats[p] = {
+            total: total,
+            done: done,
+            pct: total > 0 ? Math.round((done / total) * 100) : 0
+        };
+    });
+
+    // Apply Filters
+    let filtered = allQuestions.filter(q => {
+        if (window.qrFilterPhase !== 'All' && q.phase !== window.qrFilterPhase) return false;
+        if (window.qrFilterStatus !== 'All') {
+            const normalizedStatus = (q.status === 'Cumplido') ? 'Cumple' : ((q.status === 'No Cumplido') ? 'No Cumple' : q.status);
+            if (normalizedStatus !== window.qrFilterStatus) return false;
+        }
+        if (window.qrSearchQuery) {
+            const query = window.qrSearchQuery.toLowerCase();
+            const text = `${q.id} ${q.phase} ${q.area} ${q.question} ${q.evidence || ''} ${q.comentarios || ''} ${q.owner || ''}`.toLowerCase();
+            if (!text.includes(query)) return false;
+        }
+        return true;
+    });
+
+    window.currentProjectQROperaciones = filtered;
+
+    // Dynamic KPIs
+    const totalCount = filtered.length;
+    const countCumple = filtered.filter(q => q.status === 'Cumple' || q.status === 'Cumplido').length;
+    const countEnProceso = filtered.filter(q => q.status === 'En Proceso').length;
+    const maturityRate = totalCount > 0 ? Math.round((countCumple / totalCount) * 100) : 0;
+
+    container.innerHTML = `
+        <!-- PHASE FILTER TABS / PILLS -->
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; align-items:center;">
+            <span style="font-size:0.8rem; font-weight:700; color:#475569; margin-right:4px;">
+                <i class="fas fa-layer-group" style="color:#ff9800;"></i> Fase QR:
+            </span>
+            <button class="btn btn-sm ${window.qrFilterPhase === 'All' ? 'btn-primary' : 'btn-outline'}" 
+                    style="${window.qrFilterPhase === 'All' ? 'background:#ff9800; border-color:#ff9800; color:white;' : 'border-color:#cbd5e1; color:#334155;'} padding:3px 10px; font-size:0.78rem; border-radius:14px;" 
+                    onclick="window.filterQRByPhase('All')">
+                Todas (${allQuestions.length})
+            </button>
+            ${phaseKeys.map(p => {
+                const conf = QR_PHASE_CONFIG[p] || { color: '#64748b' };
+                const st = phaseStats[p] || { total: 0, done: 0 };
+                const isActive = window.qrFilterPhase === p;
+                return `
+                    <button class="btn btn-sm ${isActive ? 'btn-primary' : 'btn-outline'}" 
+                            style="${isActive ? `background:${conf.color}; border-color:${conf.color}; color:white;` : `border-color:#cbd5e1; color:#334155;`} padding:3px 10px; font-size:0.78rem; border-radius:14px;" 
+                            onclick="window.filterQRByPhase('${p}')">
+                        <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${isActive ? 'white' : conf.color}; margin-right:4px;"></span>
+                        ${p} (${st.done}/${st.total})
+                    </button>
+                `;
+            }).join('')}
+        </div>
+
+        <!-- FILTER CONTROLS BAR -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; background:#f8fafc; padding:8px 12px; border-radius:6px; border:1px solid #e2e8f0; margin-bottom:14px;">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <label style="font-size:0.78rem; font-weight:700; color:#475569;">Fase:</label>
+                    <select class="swal2-input" style="width:auto; margin:0; height:32px; font-size:0.8rem; padding:2px 8px;" onchange="window.filterQRByPhase(this.value)">
+                        <option value="All" ${window.qrFilterPhase === 'All' ? 'selected' : ''}>-- Todas las Fases --</option>
+                        ${phaseKeys.map(p => `<option value="${p}" ${window.qrFilterPhase === p ? 'selected' : ''}>${p} (${phaseStats[p]?.total || 0} preguntas)</option>`).join('')}
+                    </select>
+                </div>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <label style="font-size:0.78rem; font-weight:700; color:#475569;">Estado:</label>
+                    <select class="swal2-input" style="width:auto; margin:0; height:32px; font-size:0.8rem; padding:2px 8px;" onchange="window.changeQRStatusFilter(this.value)">
+                        <option value="All" ${window.qrFilterStatus === 'All' ? 'selected' : ''}>Todos los Estados</option>
+                        <option value="Cumple" ${window.qrFilterStatus === 'Cumple' ? 'selected' : ''}>Cumple (Validado)</option>
+                        <option value="En Proceso" ${window.qrFilterStatus === 'En Proceso' ? 'selected' : ''}>En Proceso</option>
+                        <option value="Pendiente" ${window.qrFilterStatus === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
+                        <option value="No Cumple" ${window.qrFilterStatus === 'No Cumple' ? 'selected' : ''}>No Cumple / Bloqueante</option>
+                    </select>
+                </div>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <label style="font-size:0.78rem; font-weight:700; color:#475569;"><i class="fas fa-search"></i></label>
+                    <input type="text" class="swal2-input" style="width:180px; margin:0; height:32px; font-size:0.8rem; padding:2px 8px;" placeholder="Buscar criterio..." value="${window.qrSearchQuery || ''}" oninput="window.setQRSearchQuery(this.value)">
+                </div>
+            </div>
+
+            <div style="display:flex; align-items:center; gap:12px;">
+                <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.8rem; font-weight:700; color:#1e293b; user-select:none;">
+                    <input type="checkbox" ${window.qrGroupByPhase ? 'checked' : ''} onchange="window.toggleQRGrouping(this.checked)" style="cursor:pointer; width:15px; height:15px;">
+                    Agrupar por Fase
+                </label>
+                ${window.qrGroupByPhase ? `
+                    <button class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:0.75rem;" onclick="window.expandAllQRGroups(true)">
+                        <i class="fas fa-expand-arrows-alt"></i> Expandir
+                    </button>
+                    <button class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:0.75rem;" onclick="window.expandAllQRGroups(false)">
+                        <i class="fas fa-compress-arrows-alt"></i> Plegar
+                    </button>
+                ` : ''}
+            </div>
+        </div>
+
+        <!-- DYNAMIC KPIS -->
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+            <div class="kpi-card-modern" style="padding:10px 14px; border-left:4px solid #ff9800; background:#fff; border-radius:8px; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                <div style="font-size:0.72rem; color:#64748b; font-weight:700; text-transform:uppercase;">
+                    <i class="fas fa-shield-alt" style="color:#ff9800;"></i> Criterios Evaluados ${window.qrFilterPhase !== 'All' ? `(${window.qrFilterPhase})` : ''}
+                </div>
+                <div style="font-size:1.4rem; font-weight:800; color:#0f172a; margin-top:2px;">${totalCount}</div>
+            </div>
+            <div class="kpi-card-modern" style="padding:10px 14px; border-left:4px solid #10b981; background:#fff; border-radius:8px; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                <div style="font-size:0.72rem; color:#64748b; font-weight:700; text-transform:uppercase;">
+                    <i class="fas fa-check-circle" style="color:#10b981;"></i> Criterios Cumplidos
+                </div>
+                <div style="font-size:1.4rem; font-weight:800; color:#10b981; margin-top:2px;">${countCumple}</div>
+            </div>
+            <div class="kpi-card-modern" style="padding:10px 14px; border-left:4px solid #f59e0b; background:#fff; border-radius:8px; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                <div style="font-size:0.72rem; color:#64748b; font-weight:700; text-transform:uppercase;">
+                    <i class="fas fa-clock" style="color:#f59e0b;"></i> En Proceso
+                </div>
+                <div style="font-size:1.4rem; font-weight:800; color:#f59e0b; margin-top:2px;">${countEnProceso}</div>
+            </div>
+            <div class="kpi-card-modern" style="padding:10px 14px; border-left:4px solid #3b82f6; background:#fff; border-radius:8px; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                <div style="font-size:0.72rem; color:#64748b; font-weight:700; text-transform:uppercase;">
+                    <i class="fas fa-percentage" style="color:#3b82f6;"></i> Madurez Operativa
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
+                    <span style="font-size:1.4rem; font-weight:800; color:#3b82f6;">${maturityRate}%</span>
+                    <div style="flex:1; height:7px; background:#e2e8f0; border-radius:4px; overflow:hidden;">
+                        <div style="width:${maturityRate}%; height:100%; background:#3b82f6;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="kpi-card-modern" style="padding:10px 14px; border-left:4px solid ${criticalCount > 0 ? '#ef4444' : '#10b981'}; background:#fff; border-radius:8px; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                <div style="font-size:0.72rem; color:#64748b; font-weight:700; text-transform:uppercase;">
+                    <i class="fas fa-fire" style="color:${criticalCount > 0 ? '#ef4444' : '#10b981'};"></i> Incidencias Críticas
+                </div>
+                <div style="font-size:1.4rem; font-weight:800; color:${criticalCount > 0 ? '#ef4444' : '#10b981'}; margin-top:2px;">${criticalCount}</div>
+            </div>
+        </div>
+
+        <!-- TABLE CONTENT -->
+        <div id="qr-table-content-area">
+            ${renderQRQuestionsTableContent(filtered)}
+        </div>
+    `;
+}
+
+function renderQRQuestionsTableContent(filtered) {
+    if (filtered.length === 0) {
+        return `
+            <div style="text-align:center; padding:2.5rem; color:#64748b; background:#fff; border-radius:8px; border:1px dashed #cbd5e1;">
+                <i class="fas fa-search fa-2x" style="opacity:0.3; margin-bottom:8px;"></i>
+                <p style="margin:0; font-weight:600;">No se encontraron criterios de Quality Gate Operaciones con los filtros seleccionados.</p>
+                <button class="btn btn-outline btn-sm" style="margin-top:10px;" onclick="window.filterQRByPhase('All'); window.changeQRStatusFilter('All');">Restablecer Filtros</button>
+            </div>
+        `;
+    }
+
+    if (!window.qrGroupByPhase) {
+        // Flat Table
+        return `
+            <div style="overflow-x: auto; width: 100%;">
+                <table class="alv-table" style="min-width: 1250px;">
+                    <thead>
+                        <tr>
+                            <th style="width: 90px;">ID Criterio</th>
+                            <th style="width: 110px;">Fase</th>
+                            <th style="width: 180px;">Área / Dominio</th>
+                            <th style="min-width: 320px;">Criterio de Evaluación Operativa</th>
+                            <th style="width: 140px; text-align:center;">Estado QR</th>
+                            <th style="width: 200px;">Evidencia / Observaciones</th>
+                            <th style="width: 200px;">Comentarios</th>
+                            <th style="width: 110px;">F. Validación</th>
+                            <th style="width: 150px;">Responsable</th>
+                            <th style="width: 80px; text-align:center;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filtered.map(q => renderQRTableRow(q, true)).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    // Grouped by Phase
+    const phasesPresent = ['Preparar', 'Explorar', 'Realizar', 'Desplegar', 'Ejecutar', 'Discover'].filter(p => filtered.some(q => q.phase === p));
+
+    return phasesPresent.map(p => {
+        const conf = QR_PHASE_CONFIG[p] || { color: '#ff9800', label: p, gate: 'QR' };
+        const questionsInPhase = filtered.filter(q => q.phase === p);
+        const doneInPhase = questionsInPhase.filter(q => q.status === 'Cumple' || q.status === 'Cumplido').length;
+        const totalInPhase = questionsInPhase.length;
+        const pct = totalInPhase > 0 ? Math.round((doneInPhase / totalInPhase) * 100) : 0;
+        const isCollapsed = !!window.qrCollapsedGroups[p];
+
+        return `
+            <div style="margin-bottom: 1.25rem; background: #fff; border-radius: 8px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                <!-- GROUP BANNER HEADER -->
+                <div class="qr-group-header" onclick="window.toggleQRPhaseGroup('${p}')" 
+                     style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 10px 14px; border-left: 5px solid ${conf.color}; user-select: none;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <i class="fas ${isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'}" style="color: ${conf.color}; font-size: 0.9rem;"></i>
+                        <strong style="color: #1e293b; font-size: 0.95rem;">
+                            <i class="fas fa-shield-alt" style="color: ${conf.color}; margin-right: 4px;"></i>
+                            FASE: ${p.toUpperCase()} <span style="font-weight: 500; font-size: 0.8rem; color: #64748b;">(${conf.gate})</span>
+                        </strong>
+                        <span style="font-size: 0.75rem; background: ${conf.color}15; color: ${conf.color}; font-weight: 700; padding: 2px 10px; border-radius: 12px;">
+                            ${doneInPhase} de ${totalInPhase} validadas (${pct}%)
+                        </span>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 110px; height: 7px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+                                <div style="width: ${pct}%; height: 100%; background: ${pct === 100 ? '#10b981' : conf.color};"></div>
+                            </div>
+                            <span style="font-size: 0.75rem; font-weight: 700; color: ${pct === 100 ? '#10b981' : conf.color};">${pct}%</span>
+                        </div>
+                        <span style="font-size: 0.75rem; color: #64748b;">${isCollapsed ? '<i class="fas fa-plus"></i> Desplegar' : '<i class="fas fa-minus"></i> Plegar'}</span>
+                    </div>
+                </div>
+
+                <!-- GROUP TABLE -->
+                ${isCollapsed ? '' : `
+                    <div style="overflow-x: auto; width: 100%;">
+                        <table class="alv-table" style="min-width: 1200px; margin: 0;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 90px;">ID Criterio</th>
+                                    <th style="width: 180px;">Área / Dominio</th>
+                                    <th style="min-width: 320px;">Criterio de Evaluación Operativa</th>
+                                    <th style="width: 140px; text-align:center;">Estado QR</th>
+                                    <th style="width: 200px;">Evidencia / Observaciones</th>
+                                    <th style="width: 200px;">Comentarios</th>
+                                    <th style="width: 110px;">F. Validación</th>
+                                    <th style="width: 160px;">Responsable</th>
+                                    <th style="width: 80px; text-align:center;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${questionsInPhase.map(q => renderQRTableRow(q, false)).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `}
+            </div>
+        `;
+    }).join('');
+}
+
+function renderQRTableRow(q, showPhaseCol) {
+    const rawStatus = q.status === 'Cumplido' ? 'Cumple' : (q.status === 'No Cumplido' ? 'No Cumple' : q.status);
+    const stConfig = QR_STATUS_CONFIG[rawStatus] || QR_STATUS_CONFIG['Pendiente'];
+    const pConf = QR_PHASE_CONFIG[q.phase] || { color: '#ff9800' };
+
+    return `
+        <tr>
+            <td style="font-weight:700; color:${pConf.color};">${q.id}</td>
+            ${showPhaseCol ? `
+                <td>
+                    <span style="font-size:0.75rem; font-weight:700; padding:2px 8px; border-radius:10px; background:${pConf.color}15; color:${pConf.color};">
+                        ${q.phase}
+                    </span>
+                </td>
+            ` : ''}
+            <td style="font-weight:600; text-align:left; color:#1e293b;">${q.area}</td>
+            <td style="text-align:left; white-space:normal; font-size:0.82rem; line-height:1.35; color:#334155;">
+                ${q.question}
+            </td>
+            <td style="text-align:center;">
+                <select class="swal2-input qr-status-select" 
+                        style="width:auto; margin:0; height:28px; font-size:0.75rem; padding:2px 8px; font-weight:700; border-radius:12px; border:1px solid ${stConfig.border}; background:${stConfig.bg}; color:${stConfig.text}; cursor:pointer;" 
+                        onchange="window.quickUpdateQRStatus('${q.id}', this.value)">
+                    <option value="Cumple" ${rawStatus === 'Cumple' ? 'selected' : ''}>✓ Cumple</option>
+                    <option value="En Proceso" ${rawStatus === 'En Proceso' ? 'selected' : ''}>⏳ En Proceso</option>
+                    <option value="Pendiente" ${rawStatus === 'Pendiente' ? 'selected' : ''}>⚪ Pendiente</option>
+                    <option value="No Cumple" ${rawStatus === 'No Cumple' ? 'selected' : ''}>✗ No Cumple</option>
+                </select>
+            </td>
+            <td style="text-align:left; font-size:0.78rem; color:#475569; white-space:normal;">
+                ${q.evidence ? `<span><i class="fas fa-file-alt" style="color:#ff9800; margin-right:4px;"></i>${q.evidence}</span>` : '<span style="color:#94a3b8; font-style:italic;">-</span>'}
+            </td>
+            <td style="text-align:left; font-size:0.78rem; color:#475569; white-space:normal;">
+                ${q.comentarios ? `<span><i class="fas fa-comment-dots" style="color:#64748b; margin-right:4px;"></i>${q.comentarios}</span>` : '<span style="color:#94a3b8; font-style:italic;">-</span>'}
+            </td>
+            <td style="font-size:0.8rem; color:#64748b;">${q.date || '-'}</td>
+            <td style="text-align:left; font-size:0.8rem; color:#475569;">${q.owner || '-'}</td>
+            <td style="text-align:center;">
+                <div style="display:flex; gap:4px; justify-content:center;">
+                    <button class="btn-icon" title="Editar Criterio / Evidencia" onclick="window.openEditQRQuestionModal('${q.id}')">
+                        <i class="fas fa-edit" style="color:#ff9800;"></i>
+                    </button>
+                    <button class="btn-icon" title="Eliminar Criterio" onclick="window.deleteQRQuestion('${q.id}')">
+                        <i class="fas fa-trash-alt" style="color:#dc2626; opacity:0.8;"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+window.filterQRByPhase = function(phase) {
+    window.qrFilterPhase = phase;
+    loadOperationsQualityGateTable();
+};
+
+window.changeQRStatusFilter = function(status) {
+    window.qrFilterStatus = status;
+    loadOperationsQualityGateTable();
+};
+
+window.setQRSearchQuery = function(query) {
+    window.qrSearchQuery = query;
+    loadOperationsQualityGateTable();
+};
+
+window.toggleQRGrouping = function(checked) {
+    window.qrGroupByPhase = checked;
+    loadOperationsQualityGateTable();
+};
+
+window.toggleQRPhaseGroup = function(phase) {
+    window.qrCollapsedGroups[phase] = !window.qrCollapsedGroups[phase];
+    loadOperationsQualityGateTable();
+};
+
+window.expandAllQRGroups = function(expand) {
+    ['Preparar', 'Explorar', 'Realizar', 'Desplegar', 'Ejecutar', 'Discover'].forEach(p => {
+        window.qrCollapsedGroups[p] = !expand;
+    });
+    loadOperationsQualityGateTable();
+};
+
+window.quickUpdateQRStatus = async function(id, newStatus) {
+    if (!state.selectedProject) return;
+    const projectId = state.selectedProject.id;
+    const list = window.currentProjectQRQuestions || (await getProjectQRQuestions());
+    const item = list.find(q => q.id === id);
+    if (!item) return;
+
+    item.status = newStatus;
+    if (newStatus === 'Cumple' && !item.date) {
+        item.date = new Date().toISOString().split('T')[0];
+    }
+
+    if (supabaseClient) {
+        const { error } = await supabaseClient
+            .from('project_qr_operaciones')
+            .update({
+                estado: newStatus,
+                fecha_validacion: item.date ? item.date : null,
+                updated_at: new Date().toISOString()
+            })
+            .eq('project_id', projectId)
+            .eq('codigo', id);
+
+        if (error) {
+            console.error('Error actualizando criterio en Supabase:', error);
+            Toast.fire({ icon: 'warning', title: 'Actualizado localmente (Error en BD)' });
+        } else {
+            Toast.fire({ icon: 'success', title: `Criterio actualizado a "${newStatus}"` });
+        }
+    } else {
+        Toast.fire({ icon: 'success', title: `Criterio actualizado a "${newStatus}"` });
+    }
+
+    saveProjectQRQuestions(list);
+    loadOperationsQualityGateTable();
+};
+
+window.openEditQRQuestionModal = async function(id) {
+    const list = window.currentProjectQRQuestions || (await getProjectQRQuestions());
+    const q = list.find(item => item.id === id);
+    if (!q) return;
+
+    const currentStatus = (q.status === 'Cumplido') ? 'Cumple' : ((q.status === 'No Cumplido') ? 'No Cumple' : q.status);
+
+    const { value: formValues } = await Swal.fire({
+        title: `Editar Criterio Operativo: ${q.id}`,
+        width: '680px',
+        html: `
+            <div style="text-align:left; display:flex; flex-direction:column; gap:12px;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div class="form-group">
+                        <label style="font-weight:700; font-size:0.85rem;">Fase QR:</label>
+                        <select id="swal-qr-phase" class="swal2-input" style="width:100%; margin:0;">
+                            ${['Preparar', 'Explorar', 'Realizar', 'Desplegar', 'Ejecutar', 'Discover'].map(p => `
+                                <option value="${p}" ${q.phase === p ? 'selected' : ''}>${p}</option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-weight:700; font-size:0.85rem;">Área / Dominio:</label>
+                        <input id="swal-qr-area" class="swal2-input" style="width:100%; margin:0;" value="${q.area || ''}">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label style="font-weight:700; font-size:0.85rem;">Criterio de Calidad Operativa *</label>
+                    <textarea id="swal-qr-question" class="swal2-input" style="width:100%; margin:0; height:60px;">${q.question || ''}</textarea>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div class="form-group">
+                        <label style="font-weight:700; font-size:0.85rem;">Estado de Cumplimiento:</label>
+                        <select id="swal-qr-status" class="swal2-input" style="width:100%; margin:0;">
+                            <option value="Cumple" ${currentStatus === 'Cumple' ? 'selected' : ''}>✓ Cumple (Validado)</option>
+                            <option value="En Proceso" ${currentStatus === 'En Proceso' ? 'selected' : ''}>⏳ En Proceso</option>
+                            <option value="Pendiente" ${currentStatus === 'Pendiente' ? 'selected' : ''}>⚪ Pendiente</option>
+                            <option value="No Cumple" ${currentStatus === 'No Cumple' ? 'selected' : ''}>✗ No Cumple / Bloqueante</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-weight:700; font-size:0.85rem;">Fecha de Validación:</label>
+                        <input type="date" id="swal-qr-date" class="swal2-input" style="width:100%; margin:0;" value="${q.date || ''}">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label style="font-weight:700; font-size:0.85rem;">Responsable:</label>
+                    <input id="swal-qr-owner" class="swal2-input" style="width:100%; margin:0;" value="${q.owner || ''}">
+                </div>
+
+                <div class="form-group">
+                    <label style="font-weight:700; font-size:0.85rem;">Evidencia / Observaciones Operativas:</label>
+                    <textarea id="swal-qr-evidence" class="swal2-input" style="width:100%; margin:0; height:60px;" placeholder="Documento de referencia, acuerdos de comité operativo o justificación...">${q.evidence || ''}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label style="font-weight:700; font-size:0.85rem;">Comentarios / Notas:</label>
+                    <textarea id="swal-qr-comentarios" class="swal2-input" style="width:100%; margin:0; height:60px;" placeholder="Comentarios adicionales, seguimiento, acuerdos...">${q.comentarios || ''}</textarea>
+                </div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Guardar Cambios',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+            return {
+                phase: document.getElementById('swal-qr-phase').value,
+                area: document.getElementById('swal-qr-area').value,
+                question: document.getElementById('swal-qr-question').value,
+                status: document.getElementById('swal-qr-status').value,
+                date: document.getElementById('swal-qr-date').value,
+                owner: document.getElementById('swal-qr-owner').value,
+                evidence: document.getElementById('swal-qr-evidence').value,
+                comentarios: document.getElementById('swal-qr-comentarios').value
+            };
+        }
+    });
+
+    if (formValues) {
+        Object.assign(q, formValues);
+        if (supabaseClient && state.selectedProject) {
+            const { error } = await supabaseClient
+                .from('project_qr_operaciones')
+                .update({
+                    fase: formValues.phase,
+                    area: formValues.area,
+                    pregunta: formValues.question,
+                    estado: formValues.status,
+                    fecha_validacion: formValues.date ? formValues.date : null,
+                    responsable: formValues.owner,
+                    evidencia: formValues.evidence,
+                    comentarios: formValues.comentarios,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('project_id', state.selectedProject.id)
+                .eq('codigo', id);
+
+            if (error) {
+                Swal.fire('Error al actualizar en BD', error.message, 'error');
+            } else {
+                Toast.fire({ icon: 'success', title: 'Criterio operativo actualizado en BD' });
+            }
+        } else {
+            Toast.fire({ icon: 'success', title: 'Criterio operativo actualizado' });
+        }
+
+        saveProjectQRQuestions(list);
+        loadOperationsQualityGateTable();
+    }
+};
+
+window.openEvaluateQROperacionesModal = window.openEditQRQuestionModal;
+
+window.openAddQRQuestionModal = async function(defaultPhase = null) {
+    if (!state.selectedProject) return;
+    const targetPhase = defaultPhase || (window.qrFilterPhase !== 'All' ? window.qrFilterPhase : 'Preparar');
+
+    const { value: formValues } = await Swal.fire({
+        title: 'Añadir Criterio / Pregunta de Quality Gate Operaciones',
+        width: '680px',
+        html: `
+            <div style="text-align:left; display:flex; flex-direction:column; gap:12px;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div class="form-group">
+                        <label style="font-weight:700; font-size:0.85rem;">Fase QR *</label>
+                        <select id="swal-add-qr-phase" class="swal2-input" style="width:100%; margin:0;">
+                            ${['Preparar', 'Explorar', 'Realizar', 'Desplegar', 'Ejecutar', 'Discover'].map(p => `
+                                <option value="${p}" ${targetPhase === p ? 'selected' : ''}>${p}</option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-weight:700; font-size:0.85rem;">Área / Dominio *</label>
+                        <input id="swal-add-qr-area" class="swal2-input" style="width:100%; margin:0;" placeholder="Ej. SLAs, Soporte AMS, Seguridad...">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label style="font-weight:700; font-size:0.85rem;">Criterio / Pregunta de Calidad Operativa *</label>
+                    <textarea id="swal-add-qr-question" class="swal2-input" style="width:100%; margin:0; height:60px;" placeholder="¿Se ha validado...?"></textarea>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div class="form-group">
+                        <label style="font-weight:700; font-size:0.85rem;">Estado Inicial:</label>
+                        <select id="swal-add-qr-status" class="swal2-input" style="width:100%; margin:0;">
+                            <option value="Pendiente" selected>⚪ Pendiente</option>
+                            <option value="En Proceso">⏳ En Proceso</option>
+                            <option value="Cumple">✓ Cumple</option>
+                            <option value="No Cumple">✗ No Cumple</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-weight:700; font-size:0.85rem;">Responsable:</label>
+                        <input id="swal-add-qr-owner" class="swal2-input" style="width:100%; margin:0;" value="${state.currentUser?.first_name ? `${state.currentUser.first_name} (Service Manager)` : 'Service Manager / PM'}">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label style="font-weight:700; font-size:0.85rem;">Evidencia / Observaciones:</label>
+                    <textarea id="swal-add-qr-evidence" class="swal2-input" style="width:100%; margin:0; height:50px;" placeholder="Documento o acuerdo de servicio..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label style="font-weight:700; font-size:0.85rem;">Comentarios / Notas:</label>
+                    <textarea id="swal-add-qr-comentarios" class="swal2-input" style="width:100%; margin:0; height:50px;" placeholder="Comentarios adicionales..."></textarea>
+                </div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Añadir Criterio',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+            const question = document.getElementById('swal-add-qr-question').value.trim();
+            const area = document.getElementById('swal-add-qr-area').value.trim();
+            if (!question || !area) {
+                Swal.showValidationMessage('Por favor completa el Área y el Criterio.');
+                return false;
+            }
+            return {
+                phase: document.getElementById('swal-add-qr-phase').value,
+                area: area,
+                question: question,
+                status: document.getElementById('swal-add-qr-status').value,
+                owner: document.getElementById('swal-add-qr-owner').value,
+                evidence: document.getElementById('swal-add-qr-evidence').value,
+                comentarios: document.getElementById('swal-add-qr-comentarios').value,
+                date: ''
+            };
+        }
+    });
+
+    if (formValues) {
+        const list = window.currentProjectQRQuestions || (await getProjectQRQuestions());
+        const prefix = `QR-${formValues.phase.substring(0, 3).toUpperCase()}`;
+        const countInPhase = list.filter(q => q.phase === formValues.phase).length;
+        const newId = `${prefix}-${String(countInPhase + 1).padStart(2, '0')}`;
+
+        const newCriterionObj = {
+            id: newId,
+            ...formValues
+        };
+
+        if (supabaseClient) {
+            const { error } = await supabaseClient
+                .from('project_qr_operaciones')
+                .insert([{
+                    project_id: state.selectedProject.id,
+                    codigo: newId,
+                    fase: formValues.phase,
+                    area: formValues.area,
+                    pregunta: formValues.question,
+                    estado: formValues.status,
+                    fecha_validacion: formValues.date ? formValues.date : null,
+                    responsable: formValues.owner,
+                    evidencia: formValues.evidence,
+                    comentarios: formValues.comentarios,
+                    orden: list.length + 1
+                }]);
+
+            if (error) {
+                Swal.fire('Error al guardar en BD', error.message, 'error');
+                return;
+            }
+        }
+
+        list.push(newCriterionObj);
+        saveProjectQRQuestions(list);
+        Toast.fire({ icon: 'success', title: `Criterio ${newId} guardado en BD` });
+        loadOperationsQualityGateTable();
+    }
+};
+
+window.deleteQRQuestion = async function(id) {
+    const list = window.currentProjectQRQuestions || (await getProjectQRQuestions());
+    const idx = list.findIndex(q => q.id === id);
+    if (idx === -1) return;
+
+    const res = await Swal.fire({
+        title: `¿Eliminar criterio ${id}?`,
+        text: list[idx].question,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (res.isConfirmed) {
+        if (supabaseClient && state.selectedProject) {
+            const { error } = await supabaseClient
+                .from('project_qr_operaciones')
+                .delete()
+                .eq('project_id', state.selectedProject.id)
+                .eq('codigo', id);
+
+            if (error) {
+                Swal.fire('Error al eliminar en BD', error.message, 'error');
+                return;
+            }
+        }
+
+        list.splice(idx, 1);
+        saveProjectQRQuestions(list);
+        Toast.fire({ icon: 'success', title: 'Criterio operativo eliminado de BD' });
+        loadOperationsQualityGateTable();
+    }
+};
+
+window.exportQROperacionesToExcel = async function() {
+    if (!state.selectedProject) return;
+    const questions = window.currentProjectQRQuestions || (await getProjectQRQuestions());
+    if (!questions.length) {
+        Swal.fire('Atención', 'No hay datos de Quality Gate Operaciones para exportar.', 'info');
+        return;
+    }
+
+    const data = questions.map(q => ({
+        'Fase': q.phase,
+        'ID Criterio': q.id,
+        'Área / Dominio': q.area,
+        'Criterio de Evaluación Operativa': q.question,
+        'Estado': q.status,
+        'Evidencia / Observaciones': q.evidence || '',
+        'Comentarios': q.comentarios || '',
+        'Fecha Validación': q.date || '',
+        'Responsable': q.owner || ''
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    ws['!cols'] = [
+        { wch: 14 }, { wch: 14 }, { wch: 25 }, { wch: 55 },
+        { wch: 15 }, { wch: 35 }, { wch: 35 }, { wch: 16 }, { wch: 25 }
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'QR_Operaciones');
+    const date = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb, `Quality_Gate_Operaciones_${state.selectedProject.name || 'Proyecto'}_${date}.xlsx`);
+};
+
+// --- IMPORT EXCEL: QUALITY GATE OPERACIONES (GES) ---
+
+window.triggerUploadQRExcel = function() {
+    if (!state.selectedProject) {
+        Swal.fire('Atención', 'Selecciona primero un proyecto para actualizar su Quality Gate de Operaciones.', 'warning');
+        return;
+    }
+    let input = document.getElementById('qr-excel-file-input');
+    if (!input) {
+        input = document.createElement('input');
+        input.id = 'qr-excel-file-input';
+        input.type = 'file';
+        input.accept = '.xlsx, .xls';
+        input.style.display = 'none';
+        document.body.appendChild(input);
+        input.addEventListener('change', window.handleQRExcelUpload);
+    }
+    input.value = '';
+    input.click();
+};
+
+window.handleQRExcelUpload = async function(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file || !state.selectedProject) return;
+
+    Swal.fire({
+        title: 'Leyendo archivo Excel...',
+        text: file.name,
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+    });
+
+    try {
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array', cellDates: true, dateNF: 'yyyy-mm-dd' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+                if (!rawRows || rawRows.length === 0) {
+                    Swal.fire('Error', 'El archivo Excel no contiene datos o la primera hoja está vacía.', 'error');
+                    return;
+                }
+
+                const validPhases = ['Preparar', 'Explorar', 'Realizar', 'Desplegar', 'Ejecutar', 'Discover'];
+                const phaseCounters = {};
+                validPhases.forEach(p => phaseCounters[p] = 0);
+
+                const parsed = [];
+                for (let i = 0; i < rawRows.length; i++) {
+                    const r = rawRows[i];
+                    const getCol = (names) => {
+                        for (const n of names) {
+                            if (r[n] !== undefined && r[n] !== '') return r[n];
+                            const foundKey = Object.keys(r).find(k => k.trim().toLowerCase() === n.toLowerCase());
+                            if (foundKey && r[foundKey] !== undefined && r[foundKey] !== '') return r[foundKey];
+                        }
+                        return '';
+                    };
+
+                    const question = String(getCol(['Criterio de Evaluación Operativa', 'Criterio', 'Pregunta / Criterio de Calidad', 'Pregunta', 'pregunta', 'question'])).trim();
+                    const area = String(getCol(['Área / Dominio', 'Area / Dominio', 'Área', 'Area', 'Dominio', 'Requisito', 'area'])).trim();
+                    const rawPhase = getCol(['Fase', 'fase', 'Phase', 'phase']);
+                    const rawId = String(getCol(['ID Criterio', 'ID', 'Id', 'codigo', 'Código', 'Codigo'])).trim();
+                    const rawStatus = getCol(['Estado', 'estado', 'Status', 'status']);
+                    const rawDate = getCol(['Fecha Validación', 'Fecha Validacion', 'Fecha', 'fecha_validacion', 'date']);
+                    const rawOwner = String(getCol(['Responsable', 'responsable', 'Owner', 'owner'])).trim();
+                    const rawEvidence = String(getCol(['Evidencia / Observaciones', 'Evidencia', 'evidencia', 'Observaciones', 'observaciones'])).trim();
+                    const rawComentarios = String(getCol(['Comentarios', 'comentarios', 'Comments', 'comments', 'Notas', 'notas'])).trim();
+
+                    if (!question && !area && !rawId) continue;
+
+                    const phase = normalizeQualityGatePhase(rawPhase, validPhases);
+                    phaseCounters[phase] = (phaseCounters[phase] || 0) + 1;
+
+                    let id = rawId;
+                    if (!id) {
+                        const prefix = `QR-${phase.substring(0, 3).toUpperCase()}`;
+                        id = `${prefix}-${String(phaseCounters[phase]).padStart(2, '0')}`;
+                    }
+
+                    const status = normalizeQualityGateStatus(rawStatus);
+                    const dateVal = parseExcelDate(rawDate);
+
+                    parsed.push({
+                        id: id,
+                        phase: phase,
+                        area: area || 'Operaciones',
+                        question: question || '(Sin criterio)',
+                        status: status,
+                        date: dateVal || '',
+                        owner: rawOwner || (state.currentUser?.first_name ? `${state.currentUser.first_name} (Service Manager)` : 'Service Manager / PM'),
+                        evidence: rawEvidence || '',
+                        comentarios: rawComentarios || '',
+                        orden: parsed.length + 1
+                    });
+                }
+
+                if (parsed.length === 0) {
+                    Swal.fire('Error', 'No se encontraron filas con criterios válidos en el Excel.', 'warning');
+                    return;
+                }
+
+                const countCumple = parsed.filter(p => p.status === 'Cumple').length;
+                const countEnProceso = parsed.filter(p => p.status === 'En Proceso').length;
+                const countPendiente = parsed.filter(p => p.status === 'Pendiente').length;
+                const countNoCumple = parsed.filter(p => p.status === 'No Cumple').length;
+                const phasesPresent = [...new Set(parsed.map(p => p.phase))];
+
+                const confirm = await Swal.fire({
+                    title: '¿Actualizar Quality Gate Operaciones desde Excel?',
+                    width: '600px',
+                    html: `
+                        <div style="text-align:left; font-size:0.9rem; color:#334155;">
+                            <p style="margin-bottom:8px;">Se han procesado correctamente <strong>${parsed.length}</strong> criterios operativos del archivo:</p>
+                            <div style="background:#f1f5f9; padding:10px 14px; border-radius:6px; border:1px solid #cbd5e1; margin-bottom:12px;">
+                                <div><i class="fas fa-file-excel" style="color:#ff9800;"></i> <strong>${file.name}</strong></div>
+                                <div style="margin-top:6px; font-size:0.82rem; color:#64748b;">
+                                    Fases (${phasesPresent.length}): <strong>${phasesPresent.join(', ')}</strong>
+                                </div>
+                                <div style="margin-top:4px; font-size:0.82rem; display:flex; gap:12px; flex-wrap:wrap;">
+                                    <span style="color:#15803d; font-weight:700;">✓ Cumple: ${countCumple}</span>
+                                    <span style="color:#b45309; font-weight:700;">⏳ En Proceso: ${countEnProceso}</span>
+                                    <span style="color:#64748b; font-weight:700;">⚪ Pendiente: ${countPendiente}</span>
+                                    <span style="color:#b91c1c; font-weight:700;">✗ No Cumple: ${countNoCumple}</span>
+                                </div>
+                            </div>
+                            <div style="background:#fff7ed; border-left:4px solid #f97316; padding:8px 12px; border-radius:4px; font-size:0.8rem; color:#9a3412;">
+                                <i class="fas fa-exclamation-triangle"></i> <strong>Aviso:</strong> Esta operación sincronizará la base de datos reemplazando los criterios de operaciones del proyecto actual (<strong>${state.selectedProject.id_proyecto || state.selectedProject.name}</strong>) con los contenidos en este Excel.
+                            </div>
+                        </div>
+                    `,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, actualizar Base de Datos',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#ff9800'
+                });
+
+                if (!confirm.isConfirmed) return;
+
+                Swal.fire({
+                    title: 'Actualizando base de datos...',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+
+                const projectId = state.selectedProject.id;
+
+                if (supabaseClient) {
+                    const { error: delErr } = await supabaseClient
+                        .from('project_qr_operaciones')
+                        .delete()
+                        .eq('project_id', projectId);
+
+                    if (delErr) {
+                        Swal.fire('Error al limpiar registros previos', delErr.message, 'error');
+                        return;
+                    }
+
+                    const dbRows = parsed.map((q, idx) => ({
+                        project_id: projectId,
+                        codigo: q.id,
+                        fase: q.phase,
+                        area: q.area,
+                        pregunta: q.question,
+                        estado: q.status,
+                        fecha_validacion: q.date ? q.date : null,
+                        responsable: q.owner,
+                        evidencia: q.evidence,
+                        comentarios: q.comentarios || '',
+                        orden: idx + 1
+                    }));
+
+                    const { error: insErr } = await supabaseClient
+                        .from('project_qr_operaciones')
+                        .insert(dbRows);
+
+                    if (insErr) {
+                        Swal.fire('Error al insertar nuevos registros', insErr.message, 'error');
+                        return;
+                    }
+                }
+
+                window.currentProjectQRQuestions = parsed;
+                localStorage.setItem(`altim_qr_questions_${projectId}`, JSON.stringify(parsed));
+
+                Toast.fire({ icon: 'success', title: `${parsed.length} criterios de QR Operaciones actualizados con éxito` });
+                loadOperationsQualityGateTable();
+            } catch (err) {
+                console.error('Error parseando Excel QR Operaciones:', err);
+                Swal.fire('Error', 'No se pudo leer el archivo Excel: ' + (err.message || err), 'error');
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    } catch (outerErr) {
+        Swal.fire('Error', outerErr.message, 'error');
+    }
+};
 
 // --- MODULE: TASK MANAGEMENT (TAR) ---
 const KANBAN_STATES = ['OPEN', 'TO DO', 'DOING', 'ON-HOLD', 'TESTING', 'DONE', 'CLOSED'];
@@ -6675,68 +9005,114 @@ function renderAuditLogModule() {
     `;
 }
 
+window.printEstPart = function (buttonEl) {
+    const wrapper = buttonEl ? buttonEl.closest('.collapsible-wrapper') : null;
+    if (wrapper) {
+        // Expand the collapsible section if it was collapsed
+        const content = wrapper.querySelector('.collapsible-content');
+        if (content && !content.classList.contains('expanded')) {
+            content.classList.add('expanded');
+        }
+        document.body.classList.add('is-printing-single-part');
+        wrapper.classList.add('printing-active-part');
+    }
+
+    // Give browser a moment to update layout and compute styles before opening print preview
+    setTimeout(() => {
+        window.print();
+    }, 100);
+
+    const cleanup = () => {
+        document.body.classList.remove('is-printing-single-part');
+        if (wrapper) wrapper.classList.remove('printing-active-part');
+        window.removeEventListener('afterprint', cleanup);
+    };
+
+    window.addEventListener('afterprint', cleanup);
+    setTimeout(cleanup, 3000);
+};
+
 function renderStatisticsModule() {
     elements.moduleContent.innerHTML = `
         ${renderPhaseHeader('Estadística y Analíticas')}
         <div class="stacked-layout" style="display: flex !important; flex-direction: column !important; gap: 0.5rem !important;">
-            ${isItemRestricted('est', '1: Resumen Ejecutivo') ? '' : `
-            <div class="collapsible-wrapper" style="border-left: 5px solid #666;">
-                <div class="collapsible-header" onclick="toggleSection(this)">
-                    <h3 style="color:#666; display:flex; align-items:center; gap:10px;"><i class="fas fa-chart-line"></i> 1: Resumen Ejecutivo</h3>
-                    <i class="fas fa-plus-circle toggle-icon"></i>
-                </div>
-                <div class="collapsible-content"><p style="padding:1rem;">En desarrollo...</p></div>
-            </div>`}
-            
-            ${isItemRestricted('est', '2: Progreso de Fases') ? '' : `
-            <div class="collapsible-wrapper" style="border-left: 5px solid #666;">
-                <div class="collapsible-header" onclick="toggleSection(this)">
-                    <h3 style="color:#666; display:flex; align-items:center; gap:10px;"><i class="fas fa-tasks"></i> 2: Progreso de Fases</h3>
-                    <i class="fas fa-plus-circle toggle-icon"></i>
-                </div>
-                <div class="collapsible-content"><p style="padding:1rem;">En desarrollo...</p></div>
-            </div>`}
-
-            ${isItemRestricted('est', '3: Calidad de Datos') ? '' : `
-            <div class="collapsible-wrapper" style="border-left: 5px solid #666;">
-                <div class="collapsible-header" onclick="toggleSection(this)">
-                    <h3 style="color:#666; display:flex; align-items:center; gap:10px;"><i class="fas fa-database"></i> 3: Calidad de Datos</h3>
-                    <i class="fas fa-plus-circle toggle-icon"></i>
-                </div>
-                <div class="collapsible-content"><p style="padding:1rem;">En desarrollo...</p></div>
-            </div>`}
-
-            ${isItemRestricted('est', '4: Cumplimiento de Plazos') ? '' : `
-            <div class="collapsible-wrapper" style="border-left: 5px solid #666;">
-                <div class="collapsible-header" onclick="toggleSection(this)">
-                    <h3 style="color:#666; display:flex; align-items:center; gap:10px;"><i class="fas fa-calendar-check"></i> 4: Cumplimiento de Plazos</h3>
-                    <i class="fas fa-plus-circle toggle-icon"></i>
-                </div>
-                <div class="collapsible-content"><p style="padding:1rem;">En desarrollo...</p></div>
-            </div>`}
-
-            ${isItemRestricted('est', '5: Gestión de Riesgos') ? '' : `
-            <div class="collapsible-wrapper" style="border-left: 5px solid #666;">
-                <div class="collapsible-header" onclick="toggleSection(this)">
-                    <h3 style="color:#666; display:flex; align-items:center; gap:10px;"><i class="fas fa-exclamation-triangle"></i> 5: Gestión de Riesgos</h3>
-                    <i class="fas fa-plus-circle toggle-icon"></i>
-                </div>
-                <div class="collapsible-content"><p style="padding:1rem;">En desarrollo...</p></div>
-            </div>`}
-
-            <!-- PARTE 6: Estadísticas de Incidencias (Layout Analytics) -->
-            ${isItemRestricted('est', '6: Estadísticas de Incidencias') ? '' : `
-            <div class="collapsible-wrapper" style="border-left: 5px solid var(--sap-blue);">
+            ${isItemRestricted('est', '1: Resumen Ejecutivo') || isItemRestricted('est', 'Resumen Ejecutivo') ? '' : `
+            <div class="collapsible-wrapper" style="border-left: 4px solid var(--sap-blue);">
                 <div class="collapsible-header" onclick="toggleSection(this)">
                     <h3 style="color:var(--sap-blue); display:flex; align-items:center; gap:10px;">
-                        <i class="fas fa-chart-bar"></i> 6: Estadísticas de Incidencias
+                        <i class="fas fa-chart-line"></i> 1: Resumen Ejecutivo
+                        <span style="background:rgba(0,102,255,0.1); color:var(--sap-blue); font-size:0.75rem; padding:2px 8px; border-radius:12px; font-weight:700;">LIVE KPIs</span>
+                    </h3>
+                    <i class="fas fa-plus-circle toggle-icon"></i>
+                </div>
+                <div class="collapsible-content" id="est-executive-summary-wrapper">
+                    <div id="est-executive-summary-container">
+                        <div style="text-align:center; padding:2rem;"><i class="fas fa-spinner fa-spin fa-2x" style="color:var(--sap-blue)"></i><p style="margin-top:0.5rem; color:#666;">Cargando resumen ejecutivo del proyecto...</p></div>
+                    </div>
+                </div>
+            </div>`}
+            
+            ${isItemRestricted('est', '2: Progreso de Fases') || isItemRestricted('est', 'Progreso de Fases') ? '' : `
+            <div class="collapsible-wrapper" style="border-left: 4px solid #ff9800;">
+                <div class="collapsible-header" onclick="toggleSection(this)">
+                    <h3 style="color:#ff9800; display:flex; align-items:center; gap:10px;">
+                        <i class="fas fa-tasks"></i> 2: Progreso de Fases
+                        <span style="background:rgba(255,152,0,0.1); color:#ff9800; font-size:0.75rem; padding:2px 8px; border-radius:12px; font-weight:700;">ROADMAP & AVANCE</span>
+                    </h3>
+                    <i class="fas fa-plus-circle toggle-icon"></i>
+                </div>
+                <div class="collapsible-content" id="est-phases-progress-wrapper">
+                    <div id="est-phases-progress-container">
+                        <div style="text-align:center; padding:2rem;"><i class="fas fa-spinner fa-spin fa-2x" style="color:#ff9800"></i><p style="margin-top:0.5rem; color:#666;">Cargando progreso y problemas de fases del proyecto...</p></div>
+                    </div>
+                </div>
+            </div>`}
+
+            ${isItemRestricted('est', '3: Gestión de Riesgos') || isItemRestricted('est', '5: Gestión de Riesgos') || isItemRestricted('est', 'Gestión de Riesgos') ? '' : `
+            <div class="collapsible-wrapper" style="border-left: 4px solid #f44336;">
+                <div class="collapsible-header" onclick="toggleSection(this)">
+                    <h3 style="color:#f44336; display:flex; align-items:center; gap:10px;">
+                        <i class="fas fa-exclamation-triangle"></i> 3: Gestión de Riesgos
+                        <span style="background:rgba(244,67,54,0.1); color:#f44336; font-size:0.75rem; padding:2px 8px; border-radius:12px; font-weight:700;">MATRIZ & SEVERIDAD</span>
+                    </h3>
+                    <i class="fas fa-plus-circle toggle-icon"></i>
+                </div>
+                <div class="collapsible-content" id="est-risks-module-wrapper">
+                    <div id="est-risks-module-container">
+                        <div style="text-align:center; padding:2rem;"><i class="fas fa-spinner fa-spin fa-2x" style="color:#f44336"></i><p style="margin-top:0.5rem; color:#666;">Cargando gestión y matriz de riesgos del proyecto...</p></div>
+                    </div>
+                </div>
+            </div>`}
+
+            <!-- PARTE 4: Estadísticas de Incidencias (Layout Analytics) -->
+            ${isItemRestricted('est', '4: Estadísticas de Incidencias') || isItemRestricted('est', '6: Estadísticas de Incidencias') || isItemRestricted('est', 'Estadísticas de Incidencias') ? '' : `
+            <div class="collapsible-wrapper" style="border-left: 4px solid #9c27b0;">
+                <div class="collapsible-header" onclick="toggleSection(this)">
+                    <h3 style="color:#9c27b0; display:flex; align-items:center; gap:10px;">
+                        <i class="fas fa-chart-bar"></i> 4: Estadísticas de Incidencias
+                        <span style="background:rgba(156,39,176,0.1); color:#9c27b0; font-size:0.75rem; padding:2px 8px; border-radius:12px; font-weight:700;">ON-LINE & POR PROYECTO</span>
                     </h3>
                     <i class="fas fa-plus-circle toggle-icon"></i>
                 </div>
                 <div class="collapsible-content">
                     <div style="padding:1.5rem; background: #fafafa;">
                         
+                        <!-- Top status bar with on-line indicator -->
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+                            <div id="analytics-live-timestamp" style="font-size:0.85rem; color:#64748b; display:flex; align-items:center; gap:6px;">
+                                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10b981;"></span>
+                                <span>Conectando on-line con base de datos de incidencias...</span>
+                            </div>
+                            <div id="analytics-current-filter-info" style="font-size:0.82rem; font-weight:600; color:#9c27b0;"></div>
+                        </div>
+
                         <div class="analytics-filter-bar">
+                            <div class="analytics-filter-item" style="flex: 1.5; min-width: 200px;">
+                                <label><i class="fas fa-folder" style="color:#9c27b0;"></i> Proyecto</label>
+                                <select id="analytics-filter-project" onchange="window.updateIncidentDashboard()">
+                                    <option value="">-- Todos los Proyectos --</option>
+                                </select>
+                            </div>
                             <div class="analytics-filter-item">
                                 <label>Estado</label>
                                 <select id="analytics-filter-status" onchange="window.updateIncidentDashboard()">
@@ -6770,6 +9146,14 @@ function renderStatisticsModule() {
                                     <option value="">Todas las LoBs</option>
                                     ${INCIDENT_CONFIG.LOBS.map(l => `<option value="${l}">${l}</option>`).join('')}
                                 </select>
+                            </div>
+                            <div class="analytics-filter-item" style="flex: 0 0 auto; display: flex; align-items: flex-end; gap: 8px;">
+                                <button class="btn btn-outline no-print" style="height: 42px; padding: 0 16px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px; border-color:#9c27b0; color:#9c27b0;" onclick="window.fetchLiveIncidentsAndUpdate()" title="Recargar incidencias en tiempo real desde Supabase">
+                                    <i class="fas fa-sync-alt" id="analytics-refresh-icon"></i> Actualizar Online
+                                </button>
+                                <button class="btn no-print" style="height: 42px; padding: 0 16px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px; background:#334155; color:white; border:none;" onclick="window.printEstPart(this)" title="Imprimir informe de estadísticas de incidencias a PDF">
+                                    <i class="fas fa-file-pdf"></i> Imprimir / PDF
+                                </button>
                             </div>
                         </div>
 
@@ -6829,8 +9213,2954 @@ function renderStatisticsModule() {
             `}
         </div>
     `;
-    setTimeout(initIncidentCharts, 100);
+    if (!isItemRestricted('est', '1: Resumen Ejecutivo') && !isItemRestricted('est', 'Resumen Ejecutivo')) {
+        setTimeout(() => window.renderEstExecutiveSummary(), 50);
+    }
+    if (!isItemRestricted('est', '2: Progreso de Fases') && !isItemRestricted('est', 'Progreso de Fases')) {
+        setTimeout(() => window.renderEstPhasesProgress(), 80);
+    }
+    if (!isItemRestricted('est', '3: Gestión de Riesgos') && !isItemRestricted('est', '5: Gestión de Riesgos') && !isItemRestricted('est', 'Gestión de Riesgos')) {
+        setTimeout(() => window.renderEstRisksModule(), 110);
+    }
+    setTimeout(() => {
+        if (window.fetchLiveIncidentsAndUpdate) {
+            window.fetchLiveIncidentsAndUpdate(state.selectedProject?.id);
+        } else {
+            initIncidentCharts();
+        }
+    }, 140);
 }
+
+
+// ========================================================
+// EST MODULE: RESUMEN EJECUTIVO E INDICADORES DEL PROYECTO
+// ========================================================
+
+window.estKpiCharts = window.estKpiCharts || {};
+window.estExecActiveTab = 'all';
+window.estExecCachedData = null;
+
+/**
+ * Destroys any existing Chart.js instances in EST Executive Summary
+ */
+window.destroyEstKpiCharts = function () {
+    if (window.estKpiCharts) {
+        Object.keys(window.estKpiCharts).forEach(key => {
+            if (window.estKpiCharts[key]) {
+                try {
+                    window.estKpiCharts[key].destroy();
+                } catch (e) {
+                    console.warn("Error destroying chart", key, e);
+                }
+            }
+        });
+        window.estKpiCharts = {};
+    }
+};
+
+/**
+ * Switch sub-tab in the Executive Summary
+ */
+window.switchEstExecTab = function (tabName) {
+    window.estExecActiveTab = tabName;
+    document.querySelectorAll('.est-exec-tab-btn, .exp-exec-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabName);
+    });
+
+    const sections = {
+        'all': ['est-sec-trace', 'est-sec-tasks', 'est-sec-reqs', 'est-sec-quality', 'est-sec-qg', 'est-sec-drilldown'],
+        'trace': ['est-sec-trace'],
+        'tasks': ['est-sec-tasks'],
+        'reqs': ['est-sec-reqs'],
+        'quality': ['est-sec-quality'],
+        'qg': ['est-sec-qg'],
+        'drilldown': ['est-sec-drilldown']
+    };
+
+    const targetSections = sections[tabName] || sections['all'];
+    ['est-sec-trace', 'est-sec-tasks', 'est-sec-reqs', 'est-sec-quality', 'est-sec-qg', 'est-sec-drilldown'].forEach(secId => {
+        const el = document.getElementById(secId);
+        if (el) {
+            el.style.display = targetSections.includes(secId) ? 'block' : 'none';
+        }
+    });
+
+    // Re-render / update charts layout after tab switch
+    if (window.estExecCachedData) {
+        setTimeout(() => {
+            window.renderEstCharts(window.estExecCachedData);
+        }, 50);
+    }
+};
+
+/**
+ * Quick switch active project from Executive Summary
+ */
+window.changeEstExecProject = async function (newProjId) {
+    if (!newProjId) return;
+    const pid = parseInt(newProjId);
+    if (state.selectedProject?.id === pid) return;
+
+    if (supabaseClient) {
+        const { data, error } = await supabaseClient
+            .from('cliente_proy')
+            .select('*, clients(*)')
+            .eq('id', pid)
+            .single();
+
+        if (!error && data) {
+            state.selectedProject = {
+                id: data.id,
+                name: data.id_proyecto,
+                client: data.clients?.nombre_cliente || 'Cliente',
+                client_abrev: data.clients?.abrev || '',
+                client_id: data.client_id,
+                descripcion_prj: data.descripcion_prj || '',
+                sharepoint_url: data.sharepoint_url,
+                go_live_date: data.go_live_date,
+                support_start_date: data.support_start_date,
+                support_end_date: data.support_end_date
+            };
+            saveState();
+            updateUIForUser();
+        }
+    }
+
+    await window.renderEstExecutiveSummary(pid);
+    const incPrjSel = document.getElementById('analytics-filter-project');
+    if (incPrjSel && Array.from(incPrjSel.options).some(o => o.value == String(pid))) {
+        incPrjSel.value = String(pid);
+        if (window.updateIncidentDashboard) window.updateIncidentDashboard();
+    }
+};
+
+/**
+ * Main render function for EST Executive Summary
+ */
+window.renderEstExecutiveSummary = async function (targetProjectId) {
+    const container = document.getElementById('est-executive-summary-container');
+    if (!container) return;
+
+    if (!supabaseClient) {
+        container.innerHTML = '<div style="padding:1rem; color:#666;">Supabase no inicializado.</div>';
+        return;
+    }
+
+    let projId = parseInt(targetProjectId || state.selectedProject?.id);
+    
+    // Si no hay proyecto seleccionado, tomar el primer proyecto disponible en base de datos
+    if (!projId) {
+        const { data: firstProjs } = await supabaseClient
+            .from('cliente_proy')
+            .select('*, clients(*)')
+            .order('id', { ascending: true })
+            .limit(1);
+
+        if (firstProjs && firstProjs.length > 0) {
+            const p = firstProjs[0];
+            state.selectedProject = {
+                id: p.id,
+                name: p.id_proyecto,
+                client: p.clients?.nombre_cliente || 'Cliente',
+                client_abrev: p.clients?.abrev || '',
+                client_id: p.client_id,
+                descripcion_prj: p.descripcion_prj || '',
+                go_live_date: p.go_live_date
+            };
+            saveState();
+            updateUIForUser();
+            projId = p.id;
+        } else {
+            container.innerHTML = '<div style="padding:1.5rem; color:#64748b; text-align:center;"><i class="fas fa-info-circle"></i> No hay proyectos creados en la base de datos para mostrar indicadores.</div>';
+            return;
+        }
+    }
+
+    container.innerHTML = `
+        <div style="text-align:center; padding:2.5rem;">
+            <i class="fas fa-spinner fa-spin fa-2x" style="color:var(--sap-blue);"></i>
+            <p style="margin-top:0.75rem; color:#64748b; font-weight:500;">Calculando indicadores ejecutivos en tiempo real...</p>
+        </div>
+    `;
+
+    try {
+        // Parallel queries to Supabase
+        const [
+            tasksRes,
+            reqsRes,
+            bpmlRes,
+            wsGroupsRes,
+            wsScheduledRes,
+            uatsRes,
+            incidentsRes,
+            risksRes,
+            phasesRes,
+            allProjectsRes,
+            qgRes
+        ] = await Promise.all([
+            supabaseClient.from('tasks').select('*').eq('project_id', projId),
+            supabaseClient.from('requerimientos').select('*').eq('project_id', projId),
+            (state.selectedProject?.name && String(state.selectedProject.name) !== String(projId)
+                ? supabaseClient.from('master_bpml').select('id_bp, bpml_id, estado_ajuste_fpg, ids_referencia_gap, priority, negocio, nombre_scope_item_sap_best_practice, id_proyecto').or(`id_proyecto.eq.${projId},id_proyecto.eq.${state.selectedProject.name}`)
+                : supabaseClient.from('master_bpml').select('id_bp, bpml_id, estado_ajuste_fpg, ids_referencia_gap, priority, negocio, nombre_scope_item_sap_best_practice, id_proyecto').eq('id_proyecto', projId)),
+            supabaseClient.from('workshop_groups').select('id, group_id, group_name').eq('project_id', projId),
+            supabaseClient.from('project_workshops').select('*').eq('project_id', projId),
+            supabaseClient.from('master_uats').select('id_bp, id_casop, estado_ok_nok, tipo_prueba').eq('project_id', projId),
+            supabaseClient.from('incidencias').select('*').eq('proyecto_id', projId),
+            supabaseClient.from('project_risks').select('*').eq('project_id', projId),
+            supabaseClient.from('project_phases').select('*').eq('project_id', projId),
+            supabaseClient.from('cliente_proy').select('id, id_proyecto, descripcion_prj, clients(nombre_cliente)'),
+            supabaseClient.from('project_quality_gates').select('*').eq('project_id', projId).order('orden', { ascending: true })
+        ]);
+
+        // Workshop group items
+        let wsItems = [];
+        const groupIds = (wsGroupsRes.data || []).map(g => g.id);
+        if (groupIds.length > 0) {
+            const itemsRes = await supabaseClient.from('workshop_group_items').select('bp_id, group_record_id').in('group_record_id', groupIds);
+            wsItems = itemsRes.data || [];
+        }
+
+        // --- DATA PROCESSING & KPI COMPUTATION ---
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // 1. Tareas (TAR)
+        const tasks = tasksRes.data || [];
+        const totalTasks = tasks.length;
+        const tasksDone = tasks.filter(t => ['DONE', 'CLOSED'].includes((t.status || '').toUpperCase())).length;
+        const tasksTesting = tasks.filter(t => (t.status || '').toUpperCase() === 'TESTING').length;
+        const tasksDoing = tasks.filter(t => (t.status || '').toUpperCase() === 'DOING').length;
+        const tasksTodo = tasks.filter(t => (t.status || '').toUpperCase() === 'TO DO').length;
+        const tasksOpen = tasks.filter(t => (t.status || '').toUpperCase() === 'OPEN').length;
+        const tasksOnHold = tasks.filter(t => (t.status || '').toUpperCase() === 'ON-HOLD').length;
+        const tasksOverdue = tasks.filter(t => {
+            if (!t.due_date) return false;
+            if (['DONE', 'CLOSED'].includes((t.status || '').toUpperCase())) return false;
+            return new Date(t.due_date) < today;
+        });
+        const tasksHighPriority = tasks.filter(t => (t.priority || '').toLowerCase() === 'high').length;
+        const taskEfficiency = totalTasks > 0 ? Math.round((tasksDone / totalTasks) * 100) : 0;
+
+        // 2. Requerimientos de Información (SEG)
+        const reqs = reqsRes.data || [];
+        const totalReqs = reqs.length;
+        const reqsDone = reqs.filter(r => ['DONE', 'CLOSED'].includes((r.status || '').toUpperCase())).length;
+        const reqsOpen = reqs.filter(r => (r.status || '').toUpperCase() === 'OPEN').length;
+        const reqsTodo = reqs.filter(r => (r.status || '').toUpperCase() === 'TO DO').length;
+        const reqsOnHold = reqs.filter(r => (r.status || '').toUpperCase() === 'ON-HOLD').length;
+        const reqsPending = totalReqs - reqsDone;
+        const reqsOverdue = reqs.filter(r => {
+            if (!r.due_date) return false;
+            if (['DONE', 'CLOSED'].includes((r.status || '').toUpperCase())) return false;
+            return new Date(r.due_date) < today;
+        });
+        const reqsInTime = totalReqs - reqsOverdue.length;
+        const reqsComplianceRate = totalReqs > 0 ? Math.round(((totalReqs - reqsOverdue.length) / totalReqs) * 100) : 100;
+
+        // 3. Best Practices & Trazabilidad E2E (Workshops -> BPML -> UATs)
+        const wsBps = [...new Set(wsItems.map(i => (i.bp_id || '').trim().toUpperCase()).filter(Boolean))];
+        const totalWsBps = wsBps.length;
+        const totalWorkshops = (wsGroupsRes.data || []).length;
+
+        if (bpmlRes.error) {
+            console.error('Error al consultar master_bpml en EST Executive Summary:', bpmlRes.error);
+        }
+        const bpmlList = bpmlRes.data || [];
+        const bpmlBps = [...new Set(bpmlList.map(b => {
+            let bp = (b.id_bp || '').trim().toUpperCase();
+            if (!bp && b.nombre_scope_item_sap_best_practice) {
+                const m = b.nombre_scope_item_sap_best_practice.match(/^([A-Z0-9]{3,4})/i);
+                if (m) bp = m[1].toUpperCase();
+            }
+            return bp;
+        }).filter(Boolean))];
+        const totalBpmlBps = bpmlBps.length;
+        const totalBpmlRows = bpmlList.length;
+
+        const uatsList = uatsRes.data || [];
+        const uatBps = [...new Set(uatsList.map(u => (u.id_bp || '').trim().toUpperCase()).filter(Boolean))];
+        const totalUatBps = uatBps.length;
+        const totalUatCases = uatsList.length;
+        const uatOk = uatsList.filter(u => (u.estado_ok_nok || '').toUpperCase() === 'OK').length;
+        const uatNok = uatsList.filter(u => ['NOK', 'ERROR', 'DEFECTO'].includes((u.estado_ok_nok || '').toUpperCase())).length;
+        const uatPending = totalUatCases - uatOk - uatNok;
+
+        // Traceability intersections
+        const wsInBpml = wsBps.filter(bp => bpmlBps.includes(bp)).length;
+        const bpmlInUat = bpmlBps.filter(bp => uatBps.includes(bp)).length;
+        const uatCoverageRate = totalBpmlBps > 0 ? Math.round((bpmlInUat / totalBpmlBps) * 100) : 0;
+        const wsConversionRate = totalWsBps > 0 ? Math.round((wsInBpml / totalWsBps) * 100) : 0;
+
+        // 4. Incidencias y Defectos (DEY)
+        const incidents = incidentsRes.data || [];
+        const totalIncidents = incidents.length;
+        const openIncidents = incidents.filter(i => !(i.estado || '').includes('10') && !(i.estado || '').includes('11')).length;
+        const criticalIncidents = incidents.filter(i => ['Crítica', 'Alta'].includes(i.prioridad) && !(i.estado || '').includes('10') && !(i.estado || '').includes('11')).length;
+        const closedIncidents = totalIncidents - openIncidents;
+
+        // 5. Riesgos
+        const risks = risksRes.data || [];
+        const totalRisks = risks.length;
+        const openRisks = risks.filter(r => (r.estado || 'Abierto').toLowerCase() !== 'cerrado').length;
+        const highImpactRisks = risks.filter(r => (r.impacto || '').toLowerCase() === 'alto' && (r.estado || 'Abierto').toLowerCase() !== 'cerrado').length;
+
+        // 6. Fases e Hitos
+        const phases = phasesRes.data || [];
+        const expPhase = phases.find(p => (p.phase_name || '').toLowerCase().includes('explore') || (p.phase_name || '').toLowerCase().includes('explorar')) || {};
+        const expProgress = expPhase.progress || 0;
+        const goLiveDate = state.selectedProject?.go_live_date;
+        let daysToGoLive = null;
+        if (goLiveDate) {
+            daysToGoLive = Math.ceil((new Date(goLiveDate) - today) / (1000 * 60 * 60 * 24));
+        }
+
+        // 7. Quality Gates de Proyecto (QG)
+        let rawQg = qgRes.data || [];
+        if (!rawQg || rawQg.length === 0) {
+            try {
+                const localRaw = localStorage.getItem(`altim_qg_questions_${projId}`);
+                if (localRaw) rawQg = JSON.parse(localRaw);
+            } catch (e) {}
+            if (!rawQg || rawQg.length === 0) {
+                if (typeof DEFAULT_QG_QUESTIONS !== 'undefined' && DEFAULT_QG_QUESTIONS.length > 0) {
+                    rawQg = DEFAULT_QG_QUESTIONS;
+                }
+            }
+        }
+        const qgList = (rawQg || []).map(q => ({
+            id: q.codigo || q.id || '',
+            phase: q.fase || q.phase || 'Discover',
+            area: q.area || 'General',
+            question: q.pregunta || q.question || '',
+            status: q.estado || q.status || 'Pendiente',
+            evidence: q.evidencia || q.evidence || '',
+            date: q.fecha_validacion ? String(q.fecha_validacion).split('T')[0] : (q.date || ''),
+            owner: q.responsable || q.owner || ''
+        }));
+
+        const totalQg = qgList.length;
+        const qgCumple = qgList.filter(q => q.status === 'Cumple').length;
+        const qgEnProceso = qgList.filter(q => q.status === 'En Proceso').length;
+        const qgPendiente = qgList.filter(q => q.status === 'Pendiente').length;
+        const qgNoCumple = qgList.filter(q => q.status === 'No Cumple').length;
+        const qgRate = totalQg > 0 ? Math.round((qgCumple / totalQg) * 100) : 0;
+
+        const qgPhases = ['Discover', 'Preparar', 'Explorar', 'Realizar', 'Desplegar', 'Ejecutar'];
+        const qgPerPhase = {};
+        qgPhases.forEach(p => {
+            const inPhase = qgList.filter(q => q.phase === p);
+            qgPerPhase[p] = {
+                total: inPhase.length,
+                cumple: inPhase.filter(q => q.status === 'Cumple').length,
+                enProceso: inPhase.filter(q => q.status === 'En Proceso').length,
+                pendiente: inPhase.filter(q => q.status === 'Pendiente').length,
+                noCumple: inPhase.filter(q => q.status === 'No Cumple').length,
+                pct: inPhase.length > 0 ? Math.round((inPhase.filter(q => q.status === 'Cumple').length / inPhase.length) * 100) : 0
+            };
+        });
+        const qgNoCumpleList = qgList.filter(q => q.status === 'No Cumple');
+
+        // 8. Global Project Health Score (0 - 100)
+        let healthScore = 100;
+        if (reqsOverdue.length > 0) healthScore -= Math.min(25, reqsOverdue.length * 10);
+        if (tasksOverdue.length > 0) healthScore -= Math.min(20, tasksOverdue.length * 5);
+        if (criticalIncidents > 0) healthScore -= Math.min(25, criticalIncidents * 12);
+        if (highImpactRisks > 0) healthScore -= Math.min(15, highImpactRisks * 8);
+        if (totalBpmlBps > 0 && uatCoverageRate < 50) healthScore -= 10;
+        if (qgNoCumple > 0) healthScore -= Math.min(20, qgNoCumple * 10);
+        healthScore = Math.max(10, Math.min(100, healthScore));
+
+        let healthClass = 'exp-health-healthy';
+        let healthLabel = 'Proyecto en Estado Saludable';
+        let healthIcon = 'fa-check-circle';
+        if (healthScore < 50) {
+            healthClass = 'exp-health-danger';
+            healthLabel = 'Atención Crítica / En Riesgo';
+            healthIcon = 'fa-exclamation-triangle';
+        } else if (healthScore < 80) {
+            healthClass = 'exp-health-warning';
+            healthLabel = 'Precaución / Acciones Pendientes';
+            healthIcon = 'fa-exclamation-circle';
+        }
+
+        // Cache processed data for charts and tab switching
+        window.estExecCachedData = {
+            tasks, totalTasks, tasksDone, tasksTesting, tasksDoing, tasksTodo, tasksOpen, tasksOnHold, tasksOverdue, tasksHighPriority,
+            reqs, totalReqs, reqsDone, reqsOpen, reqsTodo, reqsOnHold, reqsPending, reqsOverdue, reqsInTime, reqsComplianceRate,
+            totalWsBps, totalBpmlBps, totalUatBps, totalBpmlRows, totalUatCases, uatOk, uatNok, uatPending, uatCoverageRate, wsConversionRate, bpmlInUat, wsInBpml,
+            incidents, totalIncidents, openIncidents, criticalIncidents, closedIncidents,
+            risks, totalRisks, openRisks, highImpactRisks,
+            totalQg, qgCumple, qgEnProceso, qgPendiente, qgNoCumple, qgRate, qgPhases, qgPerPhase, qgList, qgNoCumpleList,
+            allProjects: allProjectsRes.data || [],
+            projId
+        };
+
+        // --- BUILD HTML INTERFACE ---
+        const projectOptions = (allProjectsRes.data || []).map(p => `
+            <option value="${p.id}" ${p.id === projId ? 'selected' : ''}>
+                ${p.id_proyecto} - ${p.descripcion_prj || p.clients?.nombre_cliente || ''}
+            </option>
+        `).join('');
+
+        let html = `
+            <!-- TOOLBAR SUPERIOR EJECUTIVA -->
+            <div class="exp-exec-toolbar est-exec-toolbar">
+                <div class="exp-exec-project-badge est-exec-project-badge">
+                    <div class="exp-exec-avatar est-exec-avatar">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <h3 style="margin:0; font-size:1.15rem; color:#1e293b; font-weight:700;">
+                                ${state.selectedProject?.name || 'Proyecto'}
+                            </h3>
+                            <span class="exp-health-badge ${healthClass}">
+                                <i class="fas ${healthIcon}"></i> ${healthScore}% - ${healthLabel}
+                            </span>
+                        </div>
+                        <p style="margin:3px 0 0; font-size:0.82rem; color:#64748b;">
+                            <i class="fas fa-building" style="margin-right:4px;"></i> Cliente: <strong>${state.selectedProject?.client || 'N/A'}</strong> 
+                            ${goLiveDate ? ` | <i class="fas fa-flag-checkered" style="margin-left:6px; margin-right:4px;"></i> Go-Live: <strong>${goLiveDate}</strong> (${daysToGoLive !== null ? (daysToGoLive >= 0 ? `faltan ${daysToGoLive} días` : `hace ${Math.abs(daysToGoLive)} días`) : ''})` : ''}
+                            | <i class="fas fa-chart-pie" style="margin-left:6px; margin-right:4px;"></i> Avance Explorar: <strong>${expProgress}%</strong>
+                            | <i class="fas fa-clipboard-check" style="margin-left:6px; margin-right:4px; color:#00897b;"></i> Quality Gates: <strong style="color:#00897b;">${qgRate}% (${qgCumple}/${totalQg})</strong>
+                        </p>
+                    </div>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <div class="no-print" style="display:flex; align-items:center; gap:6px;">
+                        <label style="font-size:0.8rem; font-weight:600; color:#475569;"><i class="fas fa-exchange-alt"></i> Cambiar PRJ:</label>
+                        <select class="swal2-input" style="width:auto; margin:0; height:36px; font-size:0.85rem; padding:4px 8px;" onchange="window.changeEstExecProject(this.value)">
+                            ${projectOptions}
+                        </select>
+                    </div>
+                    <button class="btn btn-outline no-print" style="width:auto; height:36px; padding:0 12px; font-size:0.85rem;" onclick="window.renderEstExecutiveSummary(${projId})" title="Recargar datos en tiempo real">
+                        <i class="fas fa-sync-alt"></i> Actualizar
+                    </button>
+                    <button class="btn no-print" style="width:auto; height:36px; padding:0 12px; font-size:0.85rem; background:#334155; color:white;" onclick="window.printEstPart(this)" title="Imprimir informe ejecutivo a PDF">
+                        <i class="fas fa-file-pdf"></i> Imprimir / PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- SMART ALERTS BANNER -->
+            <div class="exec-smart-alerts-container">
+                ${qgNoCumple > 0 ? `
+                    <div class="exec-alert-item danger">
+                        <div>
+                            <i class="fas fa-times-circle" style="font-size:1.1rem; margin-right:8px;"></i>
+                            <strong>Quality Gates Bloqueantes:</strong> Hay <strong>${qgNoCumple} criterio(s) con 'No Cumple'</strong> en los Quality Gates del proyecto.
+                        </div>
+                        <button class="btn btn-outline btn-sm" style="padding:2px 10px; font-size:0.75rem; border-color:#ef4444; color:#b91c1c;" onclick="window.switchEstExecTab('qg')">
+                            Ver Quality Gates <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                ` : ''}
+
+                ${reqsOverdue.length > 0 ? `
+                    <div class="exec-alert-item danger">
+                        <div>
+                            <i class="fas fa-exclamation-triangle" style="font-size:1.1rem; margin-right:8px;"></i>
+                            <strong>Atención Requerimientos:</strong> Hay <strong>${reqsOverdue.length} requerimiento(s) de información fuera de plazo</strong> sin respuesta del cliente.
+                        </div>
+                        <button class="btn btn-outline btn-sm" style="padding:2px 10px; font-size:0.75rem; border-color:#ef4444; color:#b91c1c;" onclick="window.switchEstExecTab('drilldown')">
+                            Ver Detalles <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                ` : ''}
+
+                ${tasksOverdue.length > 0 ? `
+                    <div class="exec-alert-item warning">
+                        <div>
+                            <i class="fas fa-clock" style="font-size:1.1rem; margin-right:8px;"></i>
+                            <strong>Plazos de Tareas:</strong> Se detectan <strong>${tasksOverdue.length} tarea(s) vencidas</strong> pendientes de resolver.
+                        </div>
+                        <button class="btn btn-outline btn-sm" style="padding:2px 10px; font-size:0.75rem; border-color:#f59e0b; color:#92400e;" onclick="window.switchEstExecTab('drilldown')">
+                            Ver Tareas <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                ` : ''}
+
+                ${criticalIncidents > 0 ? `
+                    <div class="exec-alert-item danger">
+                        <div>
+                            <i class="fas fa-fire" style="font-size:1.1rem; margin-right:8px;"></i>
+                            <strong>Incidencias Críticas:</strong> Existen <strong>${criticalIncidents} incidencia(s) críticas o de alta prioridad</strong> abiertas que pueden comprometer el proyecto.
+                        </div>
+                        <button class="btn btn-outline btn-sm" style="padding:2px 10px; font-size:0.75rem; border-color:#ef4444; color:#b91c1c;" onclick="switchModule('dey')">
+                            Ir a Incidencias <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                ` : ''}
+
+                ${totalBpmlBps > 0 && uatCoverageRate < 50 ? `
+                    <div class="exec-alert-item warning">
+                        <div>
+                            <i class="fas fa-clipboard-check" style="font-size:1.1rem; margin-right:8px;"></i>
+                            <strong>Cobertura de Pruebas:</strong> La cobertura del plan UAT es del <strong>${uatCoverageRate}%</strong> (${bpmlInUat} de ${totalBpmlBps} Best Practices). Se recomienda completar los casos de prueba antes de la fase Realizar.
+                        </div>
+                    </div>
+                ` : ''}
+
+                ${reqsOverdue.length === 0 && tasksOverdue.length === 0 && criticalIncidents === 0 && qgNoCumple === 0 ? `
+                    <div class="exec-alert-item success">
+                        <div>
+                            <i class="fas fa-check-circle" style="font-size:1.1rem; margin-right:8px;"></i>
+                            <strong>Hito de Cumplimiento:</strong> No se registran requerimientos ni tareas vencidas fuera de plazo, ni bloqueos en Quality Gates para este proyecto. ¡Excelente avance!
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+
+            <!-- NAVEGACIÓN SUB-TABS EJECUTIVOS -->
+            <div class="exp-exec-tabs est-exec-tabs">
+                <button class="exp-exec-tab-btn est-exec-tab-btn active" data-tab="all" onclick="window.switchEstExecTab('all')">
+                    <i class="fas fa-th-large"></i> Vista Global Completa
+                </button>
+                <button class="exp-exec-tab-btn est-exec-tab-btn" data-tab="trace" onclick="window.switchEstExecTab('trace')">
+                    <i class="fas fa-stream"></i> 1. Trazabilidad SAP Activate (${uatCoverageRate}% Cobertura)
+                </button>
+                <button class="exp-exec-tab-btn est-exec-tab-btn" data-tab="tasks" onclick="window.switchEstExecTab('tasks')">
+                    <i class="fas fa-tasks"></i> 2. Control de Tareas (${tasksDone}/${totalTasks})
+                </button>
+                <button class="exp-exec-tab-btn est-exec-tab-btn" data-tab="reqs" onclick="window.switchEstExecTab('reqs')">
+                    <i class="fas fa-clipboard-list"></i> 3. Requerimientos Info (${reqsOverdue.length} Vencidos)
+                </button>
+                <button class="exp-exec-tab-btn est-exec-tab-btn" data-tab="quality" onclick="window.switchEstExecTab('quality')">
+                    <i class="fas fa-shield-alt"></i> 4. Defectos & Riesgos (${openIncidents} Inc. / ${openRisks} Riesgos)
+                </button>
+                <button class="exp-exec-tab-btn est-exec-tab-btn" data-tab="qg" onclick="window.switchEstExecTab('qg')">
+                    <i class="fas fa-clipboard-check"></i> 5. Quality Gates (${qgCumple}/${totalQg} - ${qgRate}%)
+                </button>
+                <button class="exp-exec-tab-btn est-exec-tab-btn" data-tab="drilldown" onclick="window.switchEstExecTab('drilldown')">
+                    <i class="fas fa-list-alt"></i> 6. Puntos de Atención & Vencimientos (${tasksOverdue.length + reqsOverdue.length + qgNoCumple})
+                </button>
+            </div>
+
+            <!-- ======================================================== -->
+            <!-- BLOQUE 1: TRAZABILIDAD BEST PRACTICES (SAP ACTIVATE)     -->
+            <!-- ======================================================== -->
+            <div id="est-sec-trace" style="margin-bottom:2rem;">
+                <h4 style="font-size:1.05rem; color:#1e293b; font-weight:700; margin-bottom:1rem; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-stream" style="color:var(--sap-blue)"></i> 1. Trazabilidad E2E Best Practices: Workshops ➔ BPML ➔ Checklist UATs
+                </h4>
+                
+                <div class="analytics-kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin-bottom:1.5rem;">
+                    <div class="kpi-card-modern kpi-total">
+                        <div class="kpi-title">BPs EN WORKSHOPS</div>
+                        <div class="kpi-value">${totalWsBps}</div>
+                        <i class="fas fa-users kpi-icon"></i>
+                        <div class="kpi-trend neutral">
+                            <span>${totalWorkshops} talleres programados</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card-modern kpi-open" title="${bpmlBps.length > 0 ? `Best Practices catalogadas: ${bpmlBps.join(', ')}` : 'Sin Best Practices catalogadas'}">
+                        <div class="kpi-title">BPs EN MASTER BPML</div>
+                        <div class="kpi-value">${totalBpmlBps}</div>
+                        <i class="fas fa-list-alt kpi-icon"></i>
+                        <div class="kpi-trend neutral">
+                            <span>${totalBpmlRows} procesos detallados${bpmlBps.length > 0 ? ` (${bpmlBps.join(', ')})` : ''}</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card-modern kpi-resolved">
+                        <div class="kpi-title">BPs EN CHECKLIST UATs</div>
+                        <div class="kpi-value">${totalUatBps}</div>
+                        <i class="fas fa-clipboard-check kpi-icon"></i>
+                        <div class="kpi-trend positive">
+                            <span>${totalUatCases} casos de prueba definidos</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card-modern ${uatCoverageRate >= 75 ? 'kpi-resolved' : (uatCoverageRate >= 50 ? 'kpi-open' : 'kpi-critical')}">
+                        <div class="kpi-title">COBERTURA PLAN UAT</div>
+                        <div class="kpi-value">${uatCoverageRate}%</div>
+                        <i class="fas fa-percentage kpi-icon"></i>
+                        <div class="kpi-trend ${uatCoverageRate >= 75 ? 'positive' : 'negative'}">
+                            <span>${bpmlInUat} de ${totalBpmlBps} BPs cubiertas</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analytics-chart-grid" style="grid-template-columns: 2fr 1fr;">
+                    <div class="analytics-chart-card">
+                        <h4><i class="fas fa-chart-bar" style="color:var(--sap-blue)"></i> Embudo de Trazabilidad E2E de Procesos</h4>
+                        <div class="analytics-chart-container">
+                            <canvas id="estChartTraceability"></canvas>
+                        </div>
+                    </div>
+                    <div class="analytics-chart-card">
+                        <h4><i class="fas fa-chart-pie" style="color:#10b981"></i> Ejecución de Pruebas UAT</h4>
+                        <div class="analytics-chart-container">
+                            <canvas id="estChartUatExecution"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ======================================================== -->
+            <!-- BLOQUE 2: CONTROL DE TAREAS DEL PROYECTO (KANBAN)        -->
+            <!-- ======================================================== -->
+            <div id="est-sec-tasks" style="margin-bottom:2rem;">
+                <h4 style="font-size:1.05rem; color:#1e293b; font-weight:700; margin-bottom:1rem; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-tasks" style="color:#6366f1"></i> 2. Control de Tareas del Proyecto (Flujo Kanban & Desempeño)
+                </h4>
+
+                <div class="analytics-kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom:1.5rem;">
+                    <div class="kpi-card-modern kpi-total">
+                        <div class="kpi-title">TOTAL TAREAS</div>
+                        <div class="kpi-value">${totalTasks}</div>
+                        <i class="fas fa-clipboard kpi-icon"></i>
+                        <div class="kpi-trend neutral"><span>Todas las fases</span></div>
+                    </div>
+                    <div class="kpi-card-modern kpi-resolved">
+                        <div class="kpi-title">FINALIZADAS (DONE)</div>
+                        <div class="kpi-value">${tasksDone}</div>
+                        <i class="fas fa-check-double kpi-icon"></i>
+                        <div class="kpi-trend positive"><span>${taskEfficiency}% completitud</span></div>
+                    </div>
+                    <div class="kpi-card-modern kpi-open">
+                        <div class="kpi-title">EN CURSO (WIP)</div>
+                        <div class="kpi-value">${tasksDoing + tasksTesting}</div>
+                        <i class="fas fa-spinner kpi-icon"></i>
+                        <div class="kpi-trend neutral"><span>${tasksDoing} Doing / ${tasksTesting} Testing</span></div>
+                    </div>
+                    <div class="kpi-card-modern ${tasksOnHold > 0 ? 'kpi-open' : 'kpi-resolved'}">
+                        <div class="kpi-title">DETENIDAS (ON-HOLD)</div>
+                        <div class="kpi-value">${tasksOnHold}</div>
+                        <i class="fas fa-pause-circle kpi-icon"></i>
+                        <div class="kpi-trend ${tasksOnHold > 0 ? 'negative' : 'positive'}"><span>Requiere desbloqueo</span></div>
+                    </div>
+                    <div class="kpi-card-modern ${tasksOverdue.length > 0 ? 'kpi-critical' : 'kpi-resolved'}">
+                        <div class="kpi-title">FUERA DE PLAZO</div>
+                        <div class="kpi-value" style="${tasksOverdue.length > 0 ? 'color:#ef4444;' : ''}">${tasksOverdue.length}</div>
+                        <i class="fas fa-calendar-times kpi-icon"></i>
+                        <div class="kpi-trend ${tasksOverdue.length > 0 ? 'negative' : 'positive'}">
+                            <span>${tasksOverdue.length > 0 ? 'Fecha límite superada' : 'Sin retrasos'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analytics-chart-grid" style="grid-template-columns: 3fr 2fr;">
+                    <div class="analytics-chart-card">
+                        <h4><i class="fas fa-stream" style="color:#6366f1"></i> Distribución de Tareas por Estado (Flujo)</h4>
+                        <div class="analytics-chart-container">
+                            <canvas id="estChartTasksStatus"></canvas>
+                        </div>
+                    </div>
+                    <div class="analytics-chart-card">
+                        <h4><i class="fas fa-signal" style="color:#f59e0b"></i> Tareas por Prioridad</h4>
+                        <div class="analytics-chart-container">
+                            <canvas id="estChartTasksPriority"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ======================================================== -->
+            <!-- BLOQUE 3: REQUERIMIENTOS DE INFORMACIÓN (SEG)            -->
+            <!-- ======================================================== -->
+            <div id="est-sec-reqs" style="margin-bottom:2rem;">
+                <h4 style="font-size:1.05rem; color:#1e293b; font-weight:700; margin-bottom:1rem; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-clipboard-list" style="color:#0ea5e9"></i> 3. Requerimientos de Información (SLA & Cumplimiento de Fechas)
+                </h4>
+
+                <div class="analytics-kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom:1.5rem;">
+                    <div class="kpi-card-modern kpi-total">
+                        <div class="kpi-title">TOTAL REQUERIMIENTOS</div>
+                        <div class="kpi-value">${totalReqs}</div>
+                        <i class="fas fa-envelope-open-text kpi-icon"></i>
+                        <div class="kpi-trend neutral"><span>Solicitudes al cliente</span></div>
+                    </div>
+                    <div class="kpi-card-modern kpi-resolved">
+                        <div class="kpi-title">RESUELTOS (DONE)</div>
+                        <div class="kpi-value">${reqsDone}</div>
+                        <i class="fas fa-check-circle kpi-icon"></i>
+                        <div class="kpi-trend positive"><span>${totalReqs > 0 ? Math.round((reqsDone / totalReqs) * 100) : 0}% entregados</span></div>
+                    </div>
+                    <div class="kpi-card-modern kpi-open">
+                        <div class="kpi-title">PENDIENTES CLIENTE</div>
+                        <div class="kpi-value">${reqsPending}</div>
+                        <i class="fas fa-hourglass-half kpi-icon"></i>
+                        <div class="kpi-trend neutral"><span>${reqsOpen} Open / ${reqsTodo} To-Do</span></div>
+                    </div>
+                    <div class="kpi-card-modern ${reqsOverdue.length > 0 ? 'kpi-critical' : 'kpi-resolved'}">
+                        <div class="kpi-title">VENCIDOS / FUERA DE PLAZO</div>
+                        <div class="kpi-value" style="${reqsOverdue.length > 0 ? 'color:#ef4444;' : ''}">${reqsOverdue.length}</div>
+                        <i class="fas fa-exclamation-circle kpi-icon"></i>
+                        <div class="kpi-trend ${reqsOverdue.length > 0 ? 'negative' : 'positive'}">
+                            <span>${reqsOverdue.length > 0 ? 'Incumplimiento de fecha' : 'Todos en plazo'}</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card-modern ${reqsComplianceRate >= 80 ? 'kpi-resolved' : 'kpi-critical'}">
+                        <div class="kpi-title">CUMPLIMIENTO DE PLAZO</div>
+                        <div class="kpi-value">${reqsComplianceRate}%</div>
+                        <i class="fas fa-tachometer-alt kpi-icon"></i>
+                        <div class="kpi-trend ${reqsComplianceRate >= 80 ? 'positive' : 'negative'}">
+                            <span>SLA de respuesta</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analytics-chart-grid" style="grid-template-columns: 1fr 1fr;">
+                    <div class="analytics-chart-card">
+                        <h4><i class="fas fa-chart-pie" style="color:#0ea5e9"></i> Distribución de Requerimientos por Estado</h4>
+                        <div class="analytics-chart-container">
+                            <canvas id="estChartReqsStatus"></canvas>
+                        </div>
+                    </div>
+                    <div class="analytics-chart-card">
+                        <h4><i class="fas fa-calendar-check" style="color:#10b981"></i> Semáforo de Cumplimiento de Fechas</h4>
+                        <div class="analytics-chart-container">
+                            <canvas id="estChartReqsDates"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ======================================================== -->
+            <!-- BLOQUE 4: CALIDAD, INCIDENCIAS Y RIESGOS                 -->
+            <!-- ======================================================== -->
+            <div id="est-sec-quality" style="margin-bottom:2rem;">
+                <h4 style="font-size:1.05rem; color:#1e293b; font-weight:700; margin-bottom:1rem; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-shield-alt" style="color:#ef4444"></i> 4. Calidad, Defectos & Matriz de Riesgos (Management)
+                </h4>
+
+                <div class="analytics-kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom:1.5rem;">
+                    <div class="kpi-card-modern kpi-total">
+                        <div class="kpi-title">INCIDENCIAS TOTALES</div>
+                        <div class="kpi-value">${totalIncidents}</div>
+                        <i class="fas fa-ticket-alt kpi-icon"></i>
+                        <div class="kpi-trend neutral"><span>Fase Desplegar / DEY</span></div>
+                    </div>
+                    <div class="kpi-card-modern ${openIncidents > 0 ? 'kpi-open' : 'kpi-resolved'}">
+                        <div class="kpi-title">INCIDENCIAS ABIERTAS</div>
+                        <div class="kpi-value">${openIncidents}</div>
+                        <i class="fas fa-exclamation-circle kpi-icon"></i>
+                        <div class="kpi-trend ${openIncidents > 0 ? 'negative' : 'positive'}">
+                            <span>${closedIncidents} resueltas</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card-modern ${criticalIncidents > 0 ? 'kpi-critical' : 'kpi-resolved'}">
+                        <div class="kpi-title">CRÍTICAS / ALTAS</div>
+                        <div class="kpi-value" style="${criticalIncidents > 0 ? 'color:#ef4444;' : ''}">${criticalIncidents}</div>
+                        <i class="fas fa-bomb kpi-icon"></i>
+                        <div class="kpi-trend ${criticalIncidents > 0 ? 'negative' : 'positive'}">
+                            <span>Bloqueantes activas</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card-modern ${openRisks > 0 ? 'kpi-open' : 'kpi-resolved'}">
+                        <div class="kpi-title">RIESGOS ACTIVOS</div>
+                        <div class="kpi-value">${openRisks}</div>
+                        <i class="fas fa-radiation kpi-icon"></i>
+                        <div class="kpi-trend neutral"><span>${totalRisks} identificados</span></div>
+                    </div>
+                    <div class="kpi-card-modern ${highImpactRisks > 0 ? 'kpi-critical' : 'kpi-resolved'}">
+                        <div class="kpi-title">RIESGO ALTO IMPACTO</div>
+                        <div class="kpi-value" style="${highImpactRisks > 0 ? 'color:#ef4444;' : ''}">${highImpactRisks}</div>
+                        <i class="fas fa-fire-alt kpi-icon"></i>
+                        <div class="kpi-trend ${highImpactRisks > 0 ? 'negative' : 'positive'}">
+                            <span>Requieren mitigación</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analytics-chart-grid" style="grid-template-columns: 1fr 1fr;">
+                    <div class="analytics-chart-card">
+                        <h4><i class="fas fa-bug" style="color:#ef4444"></i> Defectos e Incidencias por Prioridad</h4>
+                        <div class="analytics-chart-container">
+                            <canvas id="estChartIncidentsPriority"></canvas>
+                        </div>
+                    </div>
+                    <div class="analytics-chart-card">
+                        <h4><i class="fas fa-exclamation-triangle" style="color:#f59e0b"></i> Matriz de Riesgos del Proyecto</h4>
+                        <div class="analytics-chart-container">
+                            <canvas id="estChartRisksMatrix"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ======================================================== -->
+            <!-- BLOQUE 5: QUALITY GATES DE PROYECTO                      -->
+            <!-- ======================================================== -->
+            <div id="est-sec-qg" style="margin-bottom:2rem;">
+                <h4 style="font-size:1.05rem; color:#1e293b; font-weight:700; margin-bottom:1rem; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-clipboard-check" style="color:#00897b"></i> 5. Quality Gates de Proyecto (Gobierno, Fases & Aprobaciones de Calidad)
+                </h4>
+
+                <div class="analytics-kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom:1.5rem;">
+                    <div class="kpi-card-modern kpi-total">
+                        <div class="kpi-title">TOTAL CRITERIOS QG</div>
+                        <div class="kpi-value">${totalQg}</div>
+                        <i class="fas fa-tasks kpi-icon"></i>
+                        <div class="kpi-trend neutral"><span>6 fases metodológicas</span></div>
+                    </div>
+                    <div class="kpi-card-modern kpi-resolved">
+                        <div class="kpi-title">APROBADOS (CUMPLE)</div>
+                        <div class="kpi-value">${qgCumple}</div>
+                        <i class="fas fa-check-circle kpi-icon"></i>
+                        <div class="kpi-trend positive"><span>${qgRate}% superados</span></div>
+                    </div>
+                    <div class="kpi-card-modern kpi-open">
+                        <div class="kpi-title">EN EVALUACIÓN</div>
+                        <div class="kpi-value">${qgEnProceso}</div>
+                        <i class="fas fa-hourglass-half kpi-icon"></i>
+                        <div class="kpi-trend neutral"><span>En validación activa</span></div>
+                    </div>
+                    <div class="kpi-card-modern ${qgNoCumple > 0 ? 'kpi-critical' : 'kpi-resolved'}">
+                        <div class="kpi-title">NO CUMPLE (BLOQUEANTES)</div>
+                        <div class="kpi-value" style="${qgNoCumple > 0 ? 'color:#ef4444;' : ''}">${qgNoCumple}</div>
+                        <i class="fas fa-times-circle kpi-icon"></i>
+                        <div class="kpi-trend ${qgNoCumple > 0 ? 'negative' : 'positive'}">
+                            <span>${qgNoCumple > 0 ? 'Requiere subsanación' : 'Sin bloqueos'}</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card-modern ${qgRate >= 75 ? 'kpi-resolved' : (qgRate >= 50 ? 'kpi-open' : 'kpi-critical')}">
+                        <div class="kpi-title">ÍNDICE DE CUMPLIMIENTO</div>
+                        <div class="kpi-value">${qgRate}%</div>
+                        <i class="fas fa-percentage kpi-icon"></i>
+                        <div class="kpi-trend ${qgRate >= 75 ? 'positive' : 'negative'}">
+                            <span>${qgCumple} de ${totalQg} criterios</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analytics-chart-grid" style="grid-template-columns: 2fr 1fr;">
+                    <div class="analytics-chart-card">
+                        <h4><i class="fas fa-layer-group" style="color:#00897b"></i> Cumplimiento de Quality Gates por Fase</h4>
+                        <div class="analytics-chart-container">
+                            <canvas id="estChartQgPhases"></canvas>
+                        </div>
+                    </div>
+                    <div class="analytics-chart-card">
+                        <h4><i class="fas fa-chart-pie" style="color:#10b981"></i> Distribución de Estados QG</h4>
+                        <div class="analytics-chart-container">
+                            <canvas id="estChartQgStatus"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ======================================================== -->
+            <!-- BLOQUE 6: PUNTOS DE ATENCIÓN Y VENCIMIENTOS (DRILLDOWN)  -->
+            <!-- ======================================================== -->
+            <div id="est-sec-drilldown" style="margin-bottom:1rem;">
+                <h4 style="font-size:1.05rem; color:#1e293b; font-weight:700; margin-bottom:1rem; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-list-alt" style="color:#b91c1c"></i> 6. Puntos Críticos de Atención Inmediata (Para Jefes de Proyecto)
+                </h4>
+
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap:1.5rem;">
+                    <!-- REQUERIMIENTOS FUERA DE PLAZO -->
+                    <div style="background:#fff; border-radius:12px; border:1px solid #fee2e2; padding:1.25rem; box-shadow:0 4px 15px rgba(0,0,0,0.03);">
+                        <h5 style="margin:0 0 0.75rem; font-size:0.95rem; color:#991b1b; display:flex; align-items:center; gap:8px;">
+                            <i class="fas fa-calendar-times"></i> Requerimientos de Información Fuera de Plazo (${reqsOverdue.length})
+                        </h5>
+                        ${reqsOverdue.length === 0 ? `
+                            <p style="font-size:0.85rem; color:#166534; margin:0; padding:1rem; background:#f0fdf4; border-radius:8px;">
+                                <i class="fas fa-check-circle"></i> No hay requerimientos vencidos. Todos los requerimientos se encuentran dentro del plazo fijado.
+                            </p>
+                        ` : `
+                            <div style="max-height:240px; overflow-y:auto;">
+                                <table class="exec-drilldown-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Título / Solicitud</th>
+                                            <th>Responsable</th>
+                                            <th>Fecha Límite</th>
+                                            <th>Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${reqsOverdue.map(r => `
+                                            <tr>
+                                                <td><strong>${r.title || 'Sin título'}</strong></td>
+                                                <td>${r.responsable || r.assigned_to || 'Cliente'}</td>
+                                                <td style="color:#dc2626; font-weight:700;"><i class="fas fa-clock"></i> ${r.due_date}</td>
+                                                <td><span class="badge" style="background:#fee2e2; color:#b91c1c; font-size:0.7rem; padding:2px 6px;">${r.status}</span></td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        `}
+                    </div>
+
+                    <!-- TAREAS FUERA DE PLAZO O EN ON-HOLD -->
+                    <div style="background:#fff; border-radius:12px; border:1px solid #fed7aa; padding:1.25rem; box-shadow:0 4px 15px rgba(0,0,0,0.03);">
+                        <h5 style="margin:0 0 0.75rem; font-size:0.95rem; color:#9a3412; display:flex; align-items:center; gap:8px;">
+                            <i class="fas fa-exclamation-circle"></i> Tareas Vencidas o Detenidas en On-Hold (${tasksOverdue.length + tasksOnHold})
+                        </h5>
+                        ${tasksOverdue.length === 0 && tasksOnHold === 0 ? `
+                            <p style="font-size:0.85rem; color:#166534; margin:0; padding:1rem; background:#f0fdf4; border-radius:8px;">
+                                <i class="fas fa-check-circle"></i> Todas las tareas están en curso normal o finalizadas.
+                            </p>
+                        ` : `
+                            <div style="max-height:240px; overflow-y:auto;">
+                                <table class="exec-drilldown-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Tarea</th>
+                                            <th>Asignada a</th>
+                                            <th>Vencimiento / Motivo</th>
+                                            <th>Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${tasksOverdue.concat(tasks.filter(t => (t.status||'').toUpperCase() === 'ON-HOLD' && !tasksOverdue.includes(t))).map(t => `
+                                            <tr>
+                                                <td><strong>${t.title || 'Tarea'}</strong></td>
+                                                <td>${t.assigned_to || 'Sin asignar'}</td>
+                                                <td style="color:${t.due_date && new Date(t.due_date) < today ? '#dc2626' : '#64748b'}; font-weight:600;">
+                                                    ${t.due_date ? t.due_date : 'Sin fecha'}
+                                                </td>
+                                                <td>
+                                                    <span class="badge" style="background:${(t.status||'').toUpperCase() === 'ON-HOLD' ? '#fef3c7; color:#b45309;' : '#fee2e2; color:#b91c1c;'} font-size:0.7rem; padding:2px 6px;">
+                                                        ${t.status}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        `}
+                    </div>
+
+                    <!-- CRITERIOS QUALITY GATE EN ESTADO NO CUMPLE -->
+                    ${qgNoCumple > 0 ? `
+                        <div style="background:#fff; border-radius:12px; border:1px solid #fecaca; padding:1.25rem; box-shadow:0 4px 15px rgba(0,0,0,0.03); grid-column: 1 / -1;">
+                            <h5 style="margin:0 0 0.75rem; font-size:0.95rem; color:#991b1b; display:flex; align-items:center; gap:8px;">
+                                <i class="fas fa-times-circle"></i> Criterios Quality Gate en Estado 'No Cumple' (${qgNoCumple})
+                            </h5>
+                            <div style="max-height:240px; overflow-y:auto;">
+                                <table class="exec-drilldown-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Fase</th>
+                                            <th>ID Criterio</th>
+                                            <th>Área / Requisito</th>
+                                            <th>Pregunta / Criterio</th>
+                                            <th>Responsable</th>
+                                            <th>Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${qgNoCumpleList.map(q => `
+                                            <tr>
+                                                <td><span style="font-weight:700; color:#00897b;">${q.phase}</span></td>
+                                                <td style="font-weight:700;">${q.id}</td>
+                                                <td>${q.area}</td>
+                                                <td style="text-align:left;"><strong>${q.question}</strong></td>
+                                                <td>${q.owner || 'Jefe de Proyecto'}</td>
+                                                <td><span class="badge" style="background:#fee2e2; color:#b91c1c; font-size:0.7rem; padding:2px 6px;">${q.status}</span></td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+
+        container.innerHTML = html;
+
+        // Render all Chart.js graphics
+        window.renderEstCharts(window.estExecCachedData);
+
+    } catch (err) {
+        console.error("Error loading EST Executive Summary:", err);
+        container.innerHTML = `
+            <div style="padding:1.5rem; color:#ef4444; background:#fef2f2; border-radius:8px;">
+                <i class="fas fa-exclamation-triangle"></i> Error al cargar indicadores del proyecto: ${err.message}
+            </div>
+        `;
+    }
+};
+
+/**
+ * Instantiates and paints all Chart.js charts for EST
+ */
+window.renderEstCharts = function (data) {
+    if (!data || typeof Chart === 'undefined') return;
+
+    window.destroyEstKpiCharts();
+
+    const chartDefaults = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: { boxWidth: 12, padding: 15, font: { size: 11, family: "'Inter', sans-serif" } }
+            },
+            tooltip: {
+                backgroundColor: 'rgba(255,255,255,0.98)',
+                titleColor: '#0f172a',
+                bodyColor: '#334155',
+                borderColor: '#e2e8f0',
+                borderWidth: 1,
+                padding: 10,
+                boxPadding: 4,
+                usePointStyle: true
+            }
+        }
+    };
+
+    // 1. Chart Traceability Funnel (Bar)
+    const ctxTrace = document.getElementById('estChartTraceability');
+    if (ctxTrace) {
+        window.estKpiCharts['trace'] = new Chart(ctxTrace, {
+            type: 'bar',
+            data: {
+                labels: ['1. Impartidas en Workshops', '2. Catalogadas en BPML', '3. Probadas en UATs'],
+                datasets: [
+                    {
+                        label: 'Total Best Practices Únicas',
+                        data: [data.totalWsBps, data.totalBpmlBps, data.totalUatBps],
+                        backgroundColor: '#0066FF',
+                        borderRadius: 6,
+                        barPercentage: 0.6
+                    },
+                    {
+                        label: 'BPs con Trazabilidad Confirmada',
+                        data: [data.totalWsBps, data.wsInBpml, data.bpmlInUat],
+                        backgroundColor: '#10b981',
+                        borderRadius: 6,
+                        barPercentage: 0.6
+                    }
+                ]
+            },
+            options: {
+                ...chartDefaults,
+                scales: {
+                    y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { precision: 0 } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    // 2. Chart UAT Execution (Doughnut)
+    const ctxUat = document.getElementById('estChartUatExecution');
+    if (ctxUat) {
+        window.estKpiCharts['uat'] = new Chart(ctxUat, {
+            type: 'doughnut',
+            data: {
+                labels: ['Superadas (OK)', 'Pendientes', 'Fallidas (NOK)'],
+                datasets: [{
+                    data: [data.uatOk, data.uatPending, data.uatNok],
+                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                ...chartDefaults,
+                cutout: '68%'
+            }
+        });
+    }
+
+    // 3. Chart Tasks by Status (Horizontal Bar)
+    const ctxTasks = document.getElementById('estChartTasksStatus');
+    if (ctxTasks) {
+        window.estKpiCharts['tasksStatus'] = new Chart(ctxTasks, {
+            type: 'bar',
+            data: {
+                labels: ['Done / Closed', 'Testing', 'Doing', 'To Do', 'Open', 'On-Hold'],
+                datasets: [{
+                    label: 'Nº Tareas',
+                    data: [data.tasksDone, data.tasksTesting, data.tasksDoing, data.tasksTodo, data.tasksOpen, data.tasksOnHold],
+                    backgroundColor: ['#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#64748b', '#f59e0b'],
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                ...chartDefaults,
+                indexAxis: 'y',
+                scales: {
+                    x: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { precision: 0 } },
+                    y: { grid: { display: false } }
+                },
+                plugins: { ...chartDefaults.plugins, legend: { display: false } }
+            }
+        });
+    }
+
+    // 4. Chart Tasks by Priority (Bar)
+    const ctxPriority = document.getElementById('estChartTasksPriority');
+    if (ctxPriority) {
+        const pHigh = data.tasks.filter(t => (t.priority || '').toLowerCase() === 'high').length;
+        const pMed = data.tasks.filter(t => (t.priority || '').toLowerCase() === 'medium').length;
+        const pLow = data.tasks.filter(t => (t.priority || '').toLowerCase() === 'low').length;
+        window.estKpiCharts['tasksPriority'] = new Chart(ctxPriority, {
+            type: 'bar',
+            data: {
+                labels: ['Alta (High)', 'Media (Medium)', 'Baja (Low)'],
+                datasets: [{
+                    data: [pHigh, pMed, pLow],
+                    backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6'],
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                ...chartDefaults,
+                scales: {
+                    y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { precision: 0 } },
+                    x: { grid: { display: false } }
+                },
+                plugins: { ...chartDefaults.plugins, legend: { display: false } }
+            }
+        });
+    }
+
+    // 5. Chart Requerimientos Status (Doughnut)
+    const ctxReqsStatus = document.getElementById('estChartReqsStatus');
+    if (ctxReqsStatus) {
+        window.estKpiCharts['reqsStatus'] = new Chart(ctxReqsStatus, {
+            type: 'doughnut',
+            data: {
+                labels: ['Finalizados (Done)', 'En Espera (On-Hold)', 'To Do', 'Abiertos (Open)'],
+                datasets: [{
+                    data: [data.reqsDone, data.reqsOnHold, data.reqsTodo, data.reqsOpen],
+                    backgroundColor: ['#10b981', '#f59e0b', '#8b5cf6', '#3b82f6'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                ...chartDefaults,
+                cutout: '68%'
+            }
+        });
+    }
+
+    // 6. Chart Requerimientos Cumplimiento de Fechas (Pie / Doughnut)
+    const ctxReqsDates = document.getElementById('estChartReqsDates');
+    if (ctxReqsDates) {
+        window.estKpiCharts['reqsDates'] = new Chart(ctxReqsDates, {
+            type: 'doughnut',
+            data: {
+                labels: ['En Plazo', 'Fuera de Plazo (Vencidos)', 'Finalizados'],
+                datasets: [{
+                    data: [Math.max(0, data.reqsInTime - data.reqsDone), data.reqsOverdue.length, data.reqsDone],
+                    backgroundColor: ['#3b82f6', '#ef4444', '#10b981'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                ...chartDefaults,
+                cutout: '68%'
+            }
+        });
+    }
+
+    // 7. Chart Incidents by Priority (Bar)
+    const ctxIncidents = document.getElementById('estChartIncidentsPriority');
+    if (ctxIncidents) {
+        const priorities = ['Crítica', 'Alta', 'Media', 'Baja', 'Sin prioridad'];
+        const rawInc = (data.incidents || (typeof state !== 'undefined' ? state?.incidents : null) || []);
+        const countByPri = priorities.map(pri => {
+            return rawInc.filter(i => {
+                const pid = i.proyecto_id ?? i.project_id;
+                const p = (i.prioridad || '').trim();
+                const matchesPid = (data.projId ? pid == data.projId : true);
+                const matchesPri = pri === 'Sin prioridad' ? (!p || p === 'Sin prioridad') : (p.toLowerCase() === pri.toLowerCase());
+                return matchesPid && matchesPri;
+            }).length;
+        });
+
+        window.estKpiCharts['incidents'] = new Chart(ctxIncidents, {
+            type: 'bar',
+            data: {
+                labels: priorities,
+                datasets: [{
+                    label: 'Nº Incidencias',
+                    data: countByPri,
+                    backgroundColor: ['#b91c1c', '#ea580c', '#eab308', '#3b82f6', '#94a3b8'],
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                ...chartDefaults,
+                scales: {
+                    y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { precision: 0 } },
+                    x: { grid: { display: false } }
+                },
+                plugins: { ...chartDefaults.plugins, legend: { display: false } }
+            }
+        });
+    }
+
+    // 8. Chart Risks Matrix (Doughnut)
+    const ctxRisks = document.getElementById('estChartRisksMatrix');
+    if (ctxRisks) {
+        window.estKpiCharts['risks'] = new Chart(ctxRisks, {
+            type: 'doughnut',
+            data: {
+                labels: ['Impacto Alto', 'Impacto Medio', 'Impacto Bajo'],
+                datasets: [{
+                    data: [data.highImpactRisks, Math.max(0, data.openRisks - data.highImpactRisks), Math.max(0, data.totalRisks - data.openRisks)],
+                    backgroundColor: ['#ef4444', '#f59e0b', '#10b981'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                ...chartDefaults,
+                cutout: '68%'
+            }
+        });
+    }
+
+    // 9. Chart Quality Gates por Fase (Stacked Bar)
+    const ctxQgPhases = document.getElementById('estChartQgPhases');
+    if (ctxQgPhases && data.qgPhases && data.qgPerPhase) {
+        const phases = data.qgPhases;
+        const cumples = phases.map(p => data.qgPerPhase[p]?.cumple || 0);
+        const enProcesos = phases.map(p => data.qgPerPhase[p]?.enProceso || 0);
+        const pendientes = phases.map(p => data.qgPerPhase[p]?.pendiente || 0);
+        const noCumples = phases.map(p => data.qgPerPhase[p]?.noCumple || 0);
+
+        window.estKpiCharts['qgPhases'] = new Chart(ctxQgPhases, {
+            type: 'bar',
+            data: {
+                labels: phases,
+                datasets: [
+                    { label: 'Cumple', data: cumples, backgroundColor: '#10b981', borderRadius: 4 },
+                    { label: 'En Proceso', data: enProcesos, backgroundColor: '#f59e0b', borderRadius: 4 },
+                    { label: 'Pendiente', data: pendientes, backgroundColor: '#94a3b8', borderRadius: 4 },
+                    { label: 'No Cumple', data: noCumples, backgroundColor: '#ef4444', borderRadius: 4 }
+                ]
+            },
+            options: {
+                ...chartDefaults,
+                scales: {
+                    x: { stacked: true, grid: { display: false } },
+                    y: { stacked: true, beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { precision: 0 } }
+                }
+            }
+        });
+    }
+
+    // 10. Chart Quality Gates Estados (Doughnut)
+    const ctxQgStatus = document.getElementById('estChartQgStatus');
+    if (ctxQgStatus) {
+        window.estKpiCharts['qgStatus'] = new Chart(ctxQgStatus, {
+            type: 'doughnut',
+            data: {
+                labels: ['Cumple', 'En Proceso', 'Pendiente', 'No Cumple'],
+                datasets: [{
+                    data: [data.qgCumple || 0, data.qgEnProceso || 0, data.qgPendiente || 0, data.qgNoCumple || 0],
+                    backgroundColor: ['#10b981', '#f59e0b', '#94a3b8', '#ef4444'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                ...chartDefaults,
+                cutout: '68%'
+            }
+        });
+    }
+};
+
+// ========================================================
+// EST MODULE: PROGRESO DE FASES (ROADMAP, AVANCE Y PROBLEMAS)
+// ========================================================
+
+window.estPhaseCharts = window.estPhaseCharts || {};
+window.estPhaseActiveTab = 'all';
+window.estPhaseCachedData = null;
+
+/**
+ * Destroys any existing Chart.js instances in EST Phase Progress
+ */
+window.destroyEstPhaseCharts = function () {
+    if (window.estPhaseCharts) {
+        Object.keys(window.estPhaseCharts).forEach(key => {
+            if (window.estPhaseCharts[key]) {
+                try {
+                    window.estPhaseCharts[key].destroy();
+                } catch (e) {
+                    console.warn("Error destroying phase chart", key, e);
+                }
+            }
+        });
+        window.estPhaseCharts = {};
+    }
+};
+
+/**
+ * Switch sub-tab in Phase Progress
+ */
+window.switchEstPhaseTab = function (tabName) {
+    window.estPhaseActiveTab = tabName;
+    document.querySelectorAll('.est-phase-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabName);
+    });
+
+    const sections = {
+        'all': ['est-psec-stepper', 'est-psec-kpis', 'est-psec-charts-row1', 'est-psec-charts-row2', 'est-psec-table', 'est-psec-drilldown'],
+        'charts': ['est-psec-charts-row1', 'est-psec-charts-row2'],
+        'problems': ['est-psec-drilldown', 'est-psec-charts-row2'],
+        'table': ['est-psec-table']
+    };
+
+    const targetSections = sections[tabName] || sections['all'];
+    ['est-psec-stepper', 'est-psec-kpis', 'est-psec-charts-row1', 'est-psec-charts-row2', 'est-psec-table', 'est-psec-drilldown'].forEach(secId => {
+        const el = document.getElementById(secId);
+        if (el) {
+            el.style.display = targetSections.includes(secId) ? 'block' : 'none';
+        }
+    });
+
+    if (window.estPhaseCachedData) {
+        setTimeout(() => {
+            window.renderEstPhaseCharts(window.estPhaseCachedData);
+        }, 50);
+    }
+};
+
+/**
+ * Quick switch active project from Phase Progress
+ */
+window.changeEstPhaseProject = async function (newProjId) {
+    if (!newProjId) return;
+    const pid = parseInt(newProjId);
+    if (state.selectedProject?.id === pid) return;
+
+    if (supabaseClient) {
+        const { data, error } = await supabaseClient
+            .from('cliente_proy')
+            .select('*, clients(*)')
+            .eq('id', pid)
+            .single();
+
+        if (!error && data) {
+            state.selectedProject = {
+                id: data.id,
+                name: data.id_proyecto,
+                client: data.clients?.nombre_cliente || 'Cliente',
+                client_abrev: data.clients?.abrev || '',
+                client_id: data.client_id,
+                descripcion_prj: data.descripcion_prj || '',
+                sharepoint_url: data.sharepoint_url,
+                go_live_date: data.go_live_date,
+                support_start_date: data.support_start_date,
+                support_end_date: data.support_end_date
+            };
+            saveState();
+            updateUIForUser();
+        }
+    }
+
+    await window.renderEstPhasesProgress(pid);
+    const incPrjSel = document.getElementById('analytics-filter-project');
+    if (incPrjSel && Array.from(incPrjSel.options).some(o => o.value == String(pid))) {
+        incPrjSel.value = String(pid);
+        if (window.updateIncidentDashboard) window.updateIncidentDashboard();
+    }
+};
+
+/**
+ * Main render function for EST Phase Progress
+ */
+window.renderEstPhasesProgress = async function (targetProjectId) {
+    const container = document.getElementById('est-phases-progress-container');
+    if (!container) return;
+
+    if (!supabaseClient) {
+        container.innerHTML = '<div style="padding:1rem; color:#666;">Supabase no inicializado.</div>';
+        return;
+    }
+
+    let projId = parseInt(targetProjectId || state.selectedProject?.id);
+
+    // Fallback: Si no hay proyecto seleccionado, seleccionar el primero disponible
+    if (!projId) {
+        const { data: firstProjs } = await supabaseClient
+            .from('cliente_proy')
+            .select('*, clients(*)')
+            .order('id', { ascending: true })
+            .limit(1);
+
+        if (firstProjs && firstProjs.length > 0) {
+            const p = firstProjs[0];
+            state.selectedProject = {
+                id: p.id,
+                name: p.id_proyecto,
+                client: p.clients?.nombre_cliente || 'Cliente',
+                client_abrev: p.clients?.abrev || '',
+                client_id: p.client_id,
+                descripcion_prj: p.descripcion_prj || '',
+                go_live_date: p.go_live_date
+            };
+            saveState();
+            updateUIForUser();
+            projId = p.id;
+        } else {
+            container.innerHTML = '<div style="padding:1.5rem; color:#64748b; text-align:center;"><i class="fas fa-info-circle"></i> No hay proyectos creados en la base de datos para mostrar el progreso de fases.</div>';
+            return;
+        }
+    }
+
+    container.innerHTML = `
+        <div style="text-align:center; padding:2.5rem;">
+            <i class="fas fa-spinner fa-spin fa-2x" style="color:var(--sap-blue);"></i>
+            <p style="margin-top:0.75rem; color:#64748b; font-weight:500;">Calculando evolución, avance y problemas de fases en tiempo real...</p>
+        </div>
+    `;
+
+    try {
+        // Parallel queries to Supabase
+        const [
+            phasesRes,
+            tasksRes,
+            reqsRes,
+            docsRes,
+            currentProjectRes,
+            allProjectsRes,
+            risksRes
+        ] = await Promise.all([
+            supabaseClient.from('project_phases').select('*').eq('project_id', projId).order('id', { ascending: true }),
+            supabaseClient.from('tasks').select('*').eq('project_id', projId),
+            supabaseClient.from('requerimientos').select('*').eq('project_id', projId),
+            supabaseClient.from('documentos').select('*'),
+            supabaseClient.from('cliente_proy').select('*, clients(*)').eq('id', projId).single(),
+            supabaseClient.from('cliente_proy').select('id, id_proyecto, descripcion_prj, clients(nombre_cliente)').order('id', { ascending: true }),
+            supabaseClient.from('project_risks').select('*').eq('project_id', projId)
+        ]);
+
+        let phasesData = phasesRes.data || [];
+        if (phasesData.length === 0) {
+            await ensureProjectPhases(projId);
+            const { data: retry } = await supabaseClient
+                .from('project_phases')
+                .select('*')
+                .eq('project_id', projId)
+                .order('id', { ascending: true });
+            phasesData = retry || [];
+        }
+
+        const projectData = currentProjectRes.data || state.selectedProject || {};
+        const tasks = tasksRes.data || [];
+        const reqs = reqsRes.data || [];
+        const allDocs = docsRes.data || [];
+        const risks = risksRes.data || [];
+
+        // Project documents (match by project code or project id)
+        const projCode = projectData.id_proyecto || state.selectedProject?.name || '';
+        const projectDocs = allDocs.filter(d => (d.proyecto === projCode) || (d.project_id === projId));
+
+        // Date helpers
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const parseDateSafe = (dStr) => {
+            if (!dStr) return null;
+            const parts = dStr.split('-');
+            if (parts.length === 3) {
+                return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            }
+            return new Date(dStr);
+        };
+
+        const daysBetween = (d1, d2) => {
+            if (!d1 || !d2) return 0;
+            const dt1 = parseDateSafe(d1);
+            const dt2 = parseDateSafe(d2);
+            if (!dt1 || !dt2 || isNaN(dt1) || isNaN(dt2)) return 0;
+            return Math.round((dt1 - dt2) / (1000 * 60 * 60 * 24));
+        };
+
+        const formatDateDisplay = (dStr) => {
+            if (!dStr) return 'Sin fecha';
+            const dt = parseDateSafe(dStr);
+            if (!dt || isNaN(dt)) return dStr;
+            return dt.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        };
+
+        // 6 Fases estándar SAP Activate
+        const STANDARD_PHASES = [
+            { key: 'Descubrir', code: 'DES', icon: 'fa-compass', desc: 'Estrategia y alcance preliminar' },
+            { key: 'Preparar', code: 'PRE', icon: 'fa-cogs', desc: 'Kick-off, equipo y planificación' },
+            { key: 'Explorar', code: 'EXP', icon: 'fa-search', desc: 'Fit-To-Standard y configuración' },
+            { key: 'Realizar', code: 'REA', icon: 'fa-laptop-code', desc: 'Construcción, integraciones y pruebas' },
+            { key: 'Desplegar', code: 'DEY', icon: 'fa-rocket', desc: 'Formación, Cutover y Go-Live' },
+            { key: 'Ejecutar', code: 'EJE', icon: 'fa-sync-alt', desc: 'Hipercare y soporte productivo' }
+        ];
+
+        let totalSlippageDays = 0;
+        let sumProgress = 0;
+        let phasesWithProblemsCount = 0;
+        let totalOverdueTasksCount = 0;
+        let totalOnHoldTasksCount = 0;
+        let activePhaseName = 'Completado';
+        let activePhaseFound = false;
+
+        const phasesAnalysis = STANDARD_PHASES.map((std, idx) => {
+            const phaseRow = phasesData.find(p => (p.phase_name || '').toLowerCase() === std.key.toLowerCase()) || {};
+            const progress = Math.min(100, Math.max(0, parseInt(phaseRow.progress || 0)));
+            sumProgress += progress;
+
+            const startDate = phaseRow.start_date || null;
+            const endDate = phaseRow.end_date || null;
+            const newStartDate = phaseRow.new_start_date || startDate;
+            const newEndDate = phaseRow.new_end_date || endDate;
+            const effectiveEndDate = newEndDate || endDate;
+
+            // Slippage (días de retraso de fecha fin si se replanificó después de la fecha original)
+            let slippage = 0;
+            if (endDate && newEndDate) {
+                const diff = daysBetween(newEndDate, endDate);
+                if (diff > 0) slippage = diff;
+            }
+            totalSlippageDays += slippage;
+
+            // Tasks in this phase
+            const phaseTasks = tasks.filter(t => {
+                const p = (t.phase || '').toLowerCase();
+                return p.includes(std.key.toLowerCase()) || p === std.code.toLowerCase();
+            });
+
+            const totalTasks = phaseTasks.length;
+            const tasksDone = phaseTasks.filter(t => ['DONE', 'CLOSED'].includes((t.status || '').toUpperCase())).length;
+            const tasksDoing = phaseTasks.filter(t => (t.status || '').toUpperCase() === 'DOING').length;
+            const tasksTesting = phaseTasks.filter(t => (t.status || '').toUpperCase() === 'TESTING').length;
+            const tasksTodo = phaseTasks.filter(t => (t.status || '').toUpperCase() === 'TO DO').length;
+            const tasksOpen = phaseTasks.filter(t => (t.status || '').toUpperCase() === 'OPEN').length;
+            const tasksOnHold = phaseTasks.filter(t => (t.status || '').toUpperCase() === 'ON-HOLD').length;
+
+            const tasksOverdue = phaseTasks.filter(t => {
+                if (!t.due_date) return false;
+                if (['DONE', 'CLOSED'].includes((t.status || '').toUpperCase())) return false;
+                const dt = parseDateSafe(t.due_date);
+                return dt && dt < today;
+            });
+
+            totalOverdueTasksCount += tasksOverdue.length;
+            totalOnHoldTasksCount += tasksOnHold;
+
+            // Documents in this phase
+            const phaseDocs = projectDocs.filter(d => (d.id_fase || '').toUpperCase() === std.code);
+
+            // Requerimientos in this phase
+            const phaseReqs = reqs.filter(r => {
+                const p = (r.phase || '').toLowerCase();
+                return p.includes(std.key.toLowerCase()) || p === std.code.toLowerCase();
+            });
+
+            // Status & Semaphor computation
+            let status = 'UPCOMING';
+            let statusLabel = 'Próxima';
+            let badgeClass = 'upcoming';
+            let statusColor = '#64748b';
+            let statusIcon = 'fa-calendar-alt';
+            let hasProblems = false;
+
+            const effectiveEndDt = effectiveEndDate ? parseDateSafe(effectiveEndDate) : null;
+            const startDt = (newStartDate || startDate) ? parseDateSafe(newStartDate || startDate) : null;
+
+            if (progress === 100) {
+                status = 'COMPLETED';
+                statusLabel = 'Completada';
+                badgeClass = 'completed';
+                statusColor = '#10b981';
+                statusIcon = 'fa-check-circle';
+            } else {
+                if (!activePhaseFound) {
+                    activePhaseName = `${std.key} (${progress}%)`;
+                    activePhaseFound = true;
+                }
+
+                const isDeadlinePassed = effectiveEndDt && (today > effectiveEndDt);
+                const hasBlockers = tasksOnHold > 0 || tasksOverdue.length > 0;
+
+                if (isDeadlinePassed || hasBlockers || slippage > 0) {
+                    status = 'DELAYED';
+                    statusLabel = 'En Alerta / Retraso';
+                    badgeClass = 'delayed';
+                    statusColor = '#ef4444';
+                    statusIcon = 'fa-exclamation-triangle';
+                    hasProblems = true;
+                } else if (progress > 0 || (startDt && today >= startDt)) {
+                    status = 'IN_PROGRESS';
+                    statusLabel = 'En Curso';
+                    badgeClass = 'in-progress';
+                    statusColor = '#0066FF';
+                    statusIcon = 'fa-spinner fa-spin';
+                }
+            }
+
+            if (hasProblems || tasksOnHold > 0 || tasksOverdue.length > 0) {
+                phasesWithProblemsCount++;
+            }
+
+            return {
+                id: phaseRow.id || (idx + 1),
+                name: std.key,
+                code: std.code,
+                icon: std.icon,
+                desc: std.desc,
+                progress,
+                startDate,
+                endDate,
+                newStartDate,
+                newEndDate,
+                effectiveEndDate,
+                slippage,
+                totalTasks,
+                tasksDone,
+                tasksDoing,
+                tasksTesting,
+                tasksTodo,
+                tasksOpen,
+                tasksOnHold,
+                tasksOverdue,
+                phaseDocsCount: phaseDocs.length,
+                phaseReqsCount: phaseReqs.length,
+                status,
+                statusLabel,
+                badgeClass,
+                statusColor,
+                statusIcon,
+                hasProblems,
+                comments: phaseRow.comments || ''
+            };
+        });
+
+        // Global metrics
+        const globalProgress = Math.round(sumProgress / 6);
+        const goLiveDate = projectData.go_live_date;
+        let daysToGoLive = null;
+        if (goLiveDate) {
+            const glDt = parseDateSafe(goLiveDate);
+            if (glDt) daysToGoLive = Math.ceil((glDt - today) / (1000 * 60 * 60 * 24));
+        }
+
+        // Cache data for tab switching & charts
+        window.estPhaseCachedData = {
+            phasesAnalysis,
+            globalProgress,
+            activePhaseName,
+            totalSlippageDays,
+            phasesWithProblemsCount,
+            totalOverdueTasksCount,
+            totalOnHoldTasksCount,
+            tasks,
+            projId,
+            projectData
+        };
+
+        // Project selector options
+        const projectOptions = (allProjectsRes.data || []).map(p => `
+            <option value="${p.id}" ${p.id === projId ? 'selected' : ''}>
+                ${p.id_proyecto} - ${p.descripcion_prj || p.clients?.nombre_cliente || ''}
+            </option>
+        `).join('');
+
+        // BUILD HTML INTERFACE
+        let html = `
+            <!-- TOOLBAR SUPERIOR PROGRESO DE FASES -->
+            <div class="est-exec-toolbar est-phase-toolbar">
+                <div class="est-exec-project-badge">
+                    <div class="est-exec-avatar" style="background: linear-gradient(135deg, #0284c7, #0369a1);">
+                        <i class="fas fa-tasks"></i>
+                    </div>
+                    <div>
+                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                            <h3 style="margin:0; font-size:1.15rem; color:#1e293b; font-weight:700;">
+                                ${projectData.id_proyecto || 'Proyecto'} - ${projectData.descripcion_prj || ''}
+                            </h3>
+                            <span class="est-phase-badge ${globalProgress >= 80 ? 'completed' : (phasesWithProblemsCount > 0 ? 'delayed' : 'in-progress')}">
+                                <i class="fas fa-route"></i> Roadmap: ${globalProgress}% Completado
+                            </span>
+                        </div>
+                        <p style="margin:3px 0 0; font-size:0.82rem; color:#64748b;">
+                            <i class="fas fa-building" style="margin-right:4px;"></i> Cliente: <strong>${projectData.clients?.nombre_cliente || state.selectedProject?.client || 'N/A'}</strong> 
+                            | <i class="fas fa-map-marker-alt" style="margin-left:6px; margin-right:4px;"></i> Fase Activa: <strong>${activePhaseName}</strong>
+                            ${goLiveDate ? ` | <i class="fas fa-flag-checkered" style="margin-left:6px; margin-right:4px;"></i> Go-Live: <strong>${formatDateDisplay(goLiveDate)}</strong> (${daysToGoLive !== null ? (daysToGoLive >= 0 ? `faltan ${daysToGoLive} días` : `hace ${Math.abs(daysToGoLive)} días`) : ''})` : ''}
+                        </p>
+                    </div>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <div class="no-print" style="display:flex; align-items:center; gap:6px;">
+                        <label style="font-size:0.8rem; font-weight:600; color:#475569;"><i class="fas fa-exchange-alt"></i> Cambiar PRJ:</label>
+                        <select class="swal2-input" style="width:auto; margin:0; height:36px; font-size:0.85rem; padding:4px 8px;" onchange="window.changeEstPhaseProject(this.value)">
+                            ${projectOptions}
+                        </select>
+                    </div>
+                    <button class="btn btn-outline no-print" style="width:auto; height:36px; padding:0 12px; font-size:0.85rem;" onclick="window.renderEstPhasesProgress(${projId})" title="Recargar progreso en tiempo real">
+                        <i class="fas fa-sync-alt"></i> Actualizar
+                    </button>
+                    <button class="btn no-print" style="width:auto; height:36px; padding:0 12px; font-size:0.85rem; background:#334155; color:white;" onclick="window.printEstPart(this)" title="Imprimir informe de fases">
+                        <i class="fas fa-file-pdf"></i> Imprimir / PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- SMART PHASE ALERTS (DIAGNÓSTICO DE PROBLEMAS Y CUELLOS DE BOTELLA) -->
+            <div class="exec-smart-alerts-container">
+                ${totalOnHoldTasksCount > 0 ? `
+                    <div class="exec-alert-item danger">
+                        <div>
+                            <i class="fas fa-pause-circle" style="font-size:1.15rem; margin-right:8px;"></i>
+                            <strong>Cuellos de Botella Detectados:</strong> Existen <strong>${totalOnHoldTasksCount} tarea(s) en ON-HOLD</strong> bloqueando el avance en las fases.
+                        </div>
+                        <button class="btn btn-outline btn-sm" style="padding:2px 10px; font-size:0.75rem; border-color:#ef4444; color:#b91c1c;" onclick="window.switchEstPhaseTab('problems')">
+                            Ver Bloqueos <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                ` : ''}
+
+                ${totalOverdueTasksCount > 0 ? `
+                    <div class="exec-alert-item warning">
+                        <div>
+                            <i class="fas fa-calendar-times" style="font-size:1.15rem; margin-right:8px;"></i>
+                            <strong>Retrasos en Entregables:</strong> Se registran <strong>${totalOverdueTasksCount} tarea(s) vencidas</strong> que han sobrepasado su fecha límite fijada.
+                        </div>
+                        <button class="btn btn-outline btn-sm" style="padding:2px 10px; font-size:0.75rem; border-color:#f59e0b; color:#92400e;" onclick="window.switchEstPhaseTab('problems')">
+                            Ver Tareas Vencidas <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                ` : ''}
+
+                ${totalSlippageDays > 0 ? `
+                    <div class="exec-alert-item warning">
+                        <div>
+                            <i class="fas fa-clock" style="font-size:1.15rem; margin-right:8px;"></i>
+                            <strong>Desviación de Calendario Acumulada:</strong> El proyecto acumula un desvío total de <strong>+${totalSlippageDays} días</strong> entre fechas planificadas y reprogramadas.
+                        </div>
+                        <button class="btn btn-outline btn-sm" style="padding:2px 10px; font-size:0.75rem; border-color:#f59e0b; color:#92400e;" onclick="window.switchEstPhaseTab('charts')">
+                            Ver Cronograma <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                ` : ''}
+
+                ${totalOnHoldTasksCount === 0 && totalOverdueTasksCount === 0 && totalSlippageDays === 0 ? `
+                    <div class="exec-alert-item success">
+                        <div>
+                            <i class="fas fa-check-circle" style="font-size:1.15rem; margin-right:8px;"></i>
+                            <strong>Roadmap en Plazo Óptimo:</strong> No se detectan tareas en on-hold, vencimientos ni desviaciones en las fases activas del proyecto.
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+
+            <!-- ROADMAP VISUAL INTERACTIVO (STEPPER DE 6 FASES SAP ACTIVATE) -->
+            <div id="est-psec-stepper" style="margin-bottom:1.5rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                    <h4 style="margin:0; font-size:1rem; color:#1e293b; font-weight:700; display:flex; align-items:center; gap:8px;">
+                        <i class="fas fa-stream" style="color:#0066FF;"></i> Evolución del Roadmap SAP Activate (6 Fases)
+                    </h4>
+                    <span style="font-size:0.75rem; color:#64748b;">Haga clic en las pestañas para profundizar en problemas o cronograma</span>
+                </div>
+
+                <div class="est-phase-stepper">
+                    ${phasesAnalysis.map((p, i) => `
+                        <div class="est-phase-card ${p.badgeClass}">
+                            <div>
+                                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+                                    <div>
+                                        <span style="font-size:0.7rem; font-weight:800; color:#0066FF; text-transform:uppercase; letter-spacing:0.5px;">${i + 1}. ${p.code}</span>
+                                        <h5 style="margin:2px 0 0; font-size:0.95rem; font-weight:700; color:#1e293b;">${p.name}</h5>
+                                    </div>
+                                    <span class="est-phase-badge ${p.badgeClass}">
+                                        <i class="fas ${p.statusIcon}"></i> ${p.statusLabel}
+                                    </span>
+                                </div>
+
+                                <div class="est-phase-progress-bar">
+                                    <div class="est-phase-progress-fill ${p.badgeClass}" style="width: ${p.progress}%;"></div>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#64748b; margin-bottom:8px;">
+                                    <span>Avance</span>
+                                    <strong style="color:#1e293b;">${p.progress}%</strong>
+                                </div>
+
+                                <div style="font-size:0.72rem; color:#64748b; line-height:1.4; border-top:1px dashed #e2e8f0; padding-top:6px; margin-top:4px;">
+                                    <div><i class="fas fa-calendar-check" style="width:14px;"></i> <strong>Fin:</strong> ${formatDateDisplay(p.endDate)}</div>
+                                    ${p.slippage > 0 ? `
+                                        <div style="color:#dc2626; font-weight:700;">
+                                            <i class="fas fa-clock" style="width:14px;"></i> <strong>Replanif:</strong> ${formatDateDisplay(p.newEndDate)} (+${p.slippage}d)
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+
+                            <div style="margin-top:10px; display:flex; flex-wrap:wrap; gap:4px;">
+                                <span class="est-phase-stat-pill ${p.totalTasks > 0 && p.tasksDone === p.totalTasks ? 'success' : ''}" title="Tareas finalizadas / totales">
+                                    <i class="fas fa-tasks"></i> ${p.tasksDone}/${p.totalTasks}
+                                </span>
+                                ${p.tasksOverdue.length > 0 ? `
+                                    <span class="est-phase-stat-pill danger" title="Tareas vencidas fuera de plazo">
+                                        <i class="fas fa-exclamation-triangle"></i> ${p.tasksOverdue.length} Vencidas
+                                    </span>
+                                ` : ''}
+                                ${p.tasksOnHold > 0 ? `
+                                    <span class="est-phase-stat-pill warning" title="Tareas detenidas en On-Hold">
+                                        <i class="fas fa-pause-circle"></i> ${p.tasksOnHold} On-Hold
+                                    </span>
+                                ` : ''}
+                                ${p.phaseDocsCount > 0 ? `
+                                    <span class="est-phase-stat-pill" title="Documentos generados en la fase">
+                                        <i class="fas fa-file-alt"></i> ${p.phaseDocsCount} Docs
+                                    </span>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <!-- NAVEGACIÓN SUB-TABS PROGRESO DE FASES -->
+            <div class="est-exec-tabs est-phase-tabs">
+                <button class="est-exec-tab-btn est-phase-tab-btn active" data-tab="all" onclick="window.switchEstPhaseTab('all')">
+                    <i class="fas fa-th-large"></i> Visión General Completa
+                </button>
+                <button class="est-exec-tab-btn est-phase-tab-btn" data-tab="charts" onclick="window.switchEstPhaseTab('charts')">
+                    <i class="fas fa-chart-line"></i> Gráficos de Evolución & Desviación
+                </button>
+                <button class="est-exec-tab-btn est-phase-tab-btn" data-tab="problems" onclick="window.switchEstPhaseTab('problems')">
+                    <i class="fas fa-exclamation-triangle"></i> Diagnóstico de Problemas & Bloqueos (${totalOverdueTasksCount + totalOnHoldTasksCount})
+                </button>
+                <button class="est-exec-tab-btn est-phase-tab-btn" data-tab="table" onclick="window.switchEstPhaseTab('table')">
+                    <i class="fas fa-table"></i> Tabla Detallada de Fases (Auditoría)
+                </button>
+            </div>
+
+            <!-- BLOQUE: KPI CARDS EJECUTIVAS DE FASES -->
+            <div id="est-psec-kpis" class="analytics-kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin-bottom:1.5rem;">
+                <div class="kpi-card-modern ${globalProgress >= 75 ? 'kpi-resolved' : 'kpi-total'}">
+                    <div class="kpi-title">AVANCE GLOBAL DEL ROADMAP</div>
+                    <div class="kpi-value">${globalProgress}%</div>
+                    <i class="fas fa-route kpi-icon"></i>
+                    <div class="kpi-trend ${globalProgress >= 75 ? 'positive' : 'neutral'}">
+                        <span>${phasesAnalysis.filter(p => p.progress === 100).length} de 6 fases completadas</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card-modern kpi-open">
+                    <div class="kpi-title">FASE ACTIVA EN CURSO</div>
+                    <div class="kpi-value" style="font-size:1.6rem; line-height:1.3;">${activePhaseName}</div>
+                    <i class="fas fa-spinner kpi-icon"></i>
+                    <div class="kpi-trend neutral">
+                        <span>Foco actual del equipo de trabajo</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card-modern ${totalSlippageDays > 0 ? 'kpi-critical' : 'kpi-resolved'}">
+                    <div class="kpi-title">DESVIACIÓN DE CRONOGRAMA</div>
+                    <div class="kpi-value" style="${totalSlippageDays > 0 ? 'color:#ef4444;' : ''}">+${totalSlippageDays} <span style="font-size:1.1rem; font-weight:600;">días</span></div>
+                    <i class="fas fa-clock kpi-icon"></i>
+                    <div class="kpi-trend ${totalSlippageDays > 0 ? 'negative' : 'positive'}">
+                        <span>${totalSlippageDays > 0 ? 'Slippage acumulado sobre fecha inicial' : 'Cronograma en fecha'}</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card-modern ${totalOnHoldTasksCount + totalOverdueTasksCount > 0 ? 'kpi-critical' : 'kpi-resolved'}">
+                    <div class="kpi-title">TAREAS CON PROBLEMAS / BLOQUEOS</div>
+                    <div class="kpi-value" style="${totalOnHoldTasksCount + totalOverdueTasksCount > 0 ? 'color:#ef4444;' : ''}">${totalOnHoldTasksCount + totalOverdueTasksCount}</div>
+                    <i class="fas fa-radiation kpi-icon"></i>
+                    <div class="kpi-trend ${totalOnHoldTasksCount + totalOverdueTasksCount > 0 ? 'negative' : 'positive'}">
+                        <span>${totalOverdueTasksCount} vencidas + ${totalOnHoldTasksCount} on-hold</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BLOQUE 1 DE GRÁFICOS: AVANCE Y CRONOGRAMA -->
+            <div id="est-psec-charts-row1" class="analytics-chart-grid" style="grid-template-columns: 3fr 2fr; margin-bottom:1.5rem;">
+                <div class="analytics-chart-card">
+                    <h4><i class="fas fa-chart-bar" style="color:#0066FF;"></i> Curva de Avance Real por Fase vs Objetivo (100%)</h4>
+                    <div class="analytics-chart-container">
+                        <canvas id="estChartPhaseProgress"></canvas>
+                    </div>
+                </div>
+                <div class="analytics-chart-card">
+                    <h4><i class="fas fa-clock" style="color:#f59e0b;"></i> Desviación de Calendario por Fase (+Días de Slippage)</h4>
+                    <div class="analytics-chart-container">
+                        <canvas id="estChartPhaseSlippage"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BLOQUE 2 DE GRÁFICOS: CUELLOS DE BOTELLA Y DISTRIBUCIÓN -->
+            <div id="est-psec-charts-row2" class="analytics-chart-grid" style="grid-template-columns: 3fr 2fr; margin-bottom:1.5rem;">
+                <div class="analytics-chart-card">
+                    <h4><i class="fas fa-tasks" style="color:#10b981;"></i> Desglose de Tareas y Cuellos de Botella por Fase (Stacked)</h4>
+                    <div class="analytics-chart-container">
+                        <canvas id="estChartPhaseTasksBreakdown"></canvas>
+                    </div>
+                </div>
+                <div class="analytics-chart-card">
+                    <h4><i class="fas fa-chart-pie" style="color:#8b5cf6;"></i> Distribución del Estado de Fases</h4>
+                    <div class="analytics-chart-container">
+                        <canvas id="estChartPhaseOverallStatus"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BLOQUE: TABLA DETALLADA DE FASES (ALV AUDITORÍA) -->
+            <div id="est-psec-table" style="background:#fff; border-radius:12px; border:1px solid #e2e8f0; padding:1.25rem; margin-bottom:1.5rem; box-shadow:0 2px 6px rgba(0,0,0,0.02);">
+                <h4 style="margin:0 0 1rem; font-size:1.05rem; color:#1e293b; font-weight:700; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-table" style="color:var(--sap-blue)"></i> Auditoría de Fases, Plazos y Entregables
+                </h4>
+                <div style="overflow-x:auto;">
+                    <table class="exec-drilldown-table">
+                        <thead>
+                            <tr>
+                                <th>Fase / Código</th>
+                                <th>F. Inicio</th>
+                                <th>F. Fin Planificada</th>
+                                <th>F. Fin Replanificada</th>
+                                <th>Desvío (+Días)</th>
+                                <th>Avance (%)</th>
+                                <th>Tareas (Done / Total)</th>
+                                <th>Problemas (Vencidas / On-Hold)</th>
+                                <th>Docs</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${phasesAnalysis.map(p => `
+                                <tr>
+                                    <td>
+                                        <strong>${p.name}</strong> <span style="font-size:0.75rem; color:#64748b;">(${p.code})</span>
+                                    </td>
+                                    <td>${formatDateDisplay(p.startDate)}</td>
+                                    <td>${formatDateDisplay(p.endDate)}</td>
+                                    <td>${formatDateDisplay(p.newEndDate)}</td>
+                                    <td>
+                                        ${p.slippage > 0 ? `
+                                            <span style="color:#dc2626; font-weight:700;">+${p.slippage} días</span>
+                                        ` : '<span style="color:#10b981;">0 días</span>'}
+                                    </td>
+                                    <td>
+                                        <div style="display:flex; align-items:center; gap:8px;">
+                                            <div style="width:50px; background:#e2e8f0; height:6px; border-radius:3px; overflow:hidden;">
+                                                <div style="width:${p.progress}%; height:100%; background:${p.statusColor};"></div>
+                                            </div>
+                                            <strong>${p.progress}%</strong>
+                                        </div>
+                                    </td>
+                                    <td>${p.tasksDone} / ${p.totalTasks}</td>
+                                    <td>
+                                        ${p.tasksOverdue.length + p.tasksOnHold > 0 ? `
+                                            <span style="color:#dc2626; font-weight:700;">${p.tasksOverdue.length} vencidas | ${p.tasksOnHold} on-hold</span>
+                                        ` : '<span style="color:#10b981;"><i class="fas fa-check"></i> Sin problemas</span>'}
+                                    </td>
+                                    <td>${p.phaseDocsCount}</td>
+                                    <td>
+                                        <span class="est-phase-badge ${p.badgeClass}">
+                                            <i class="fas ${p.statusIcon}"></i> ${p.statusLabel}
+                                        </span>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- BLOQUE: DRILLDOWN DE TAREAS PROBLEMÁTICAS Y BLOQUEOS -->
+            <div id="est-psec-drilldown" style="margin-bottom:1rem;">
+                <h4 style="font-size:1.05rem; color:#1e293b; font-weight:700; margin-bottom:1rem; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-exclamation-circle" style="color:#b91c1c"></i> Tareas Problemáticas con Bloqueo o Retraso por Fase (${totalOverdueTasksCount + totalOnHoldTasksCount})
+                </h4>
+
+                ${totalOverdueTasksCount + totalOnHoldTasksCount === 0 ? `
+                    <div style="padding:1.5rem; background:#f0fdf4; border-radius:10px; border:1px solid #bbf7d0; color:#166534; text-align:center;">
+                        <i class="fas fa-check-circle fa-2x" style="margin-bottom:0.5rem;"></i>
+                        <p style="margin:0; font-weight:600;">¡Excelente! No hay tareas con fecha vencida ni en On-Hold en ninguna de las fases del proyecto.</p>
+                    </div>
+                ` : `
+                    <div style="background:#fff; border-radius:12px; border:1px solid #fee2e2; padding:1.25rem; box-shadow:0 4px 15px rgba(0,0,0,0.03);">
+                        <div style="max-height:280px; overflow-y:auto;">
+                            <table class="exec-drilldown-table">
+                                <thead>
+                                    <tr>
+                                        <th>Fase</th>
+                                        <th>Tarea / Título</th>
+                                        <th>Responsable</th>
+                                        <th>Fecha Límite</th>
+                                        <th>Estado / Problema</th>
+                                        <th>Prioridad</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${phasesAnalysis.flatMap(p => 
+                                        p.tasksOverdue.concat(
+                                            tasks.filter(t => {
+                                                const pt = (t.phase || '').toLowerCase();
+                                                const matchPhase = pt.includes(p.name.toLowerCase()) || pt === p.code.toLowerCase();
+                                                return matchPhase && (t.status || '').toUpperCase() === 'ON-HOLD' && !p.tasksOverdue.includes(t);
+                                            })
+                                        ).map(t => {
+                                            const isOverdue = t.due_date && parseDateSafe(t.due_date) < today && !['DONE', 'CLOSED'].includes((t.status||'').toUpperCase());
+                                            const isOnHold = (t.status||'').toUpperCase() === 'ON-HOLD';
+                                            return `
+                                                <tr>
+                                                    <td><span class="est-phase-badge ${p.badgeClass}">${p.name}</span></td>
+                                                    <td><strong>${t.title || 'Tarea'}</strong></td>
+                                                    <td>${t.assigned_to || 'Sin asignar'}</td>
+                                                    <td style="${isOverdue ? 'color:#dc2626; font-weight:700;' : ''}">
+                                                        ${t.due_date ? formatDateDisplay(t.due_date) : 'Sin fecha'}
+                                                    </td>
+                                                    <td>
+                                                        ${isOnHold ? `
+                                                            <span class="badge" style="background:#fef3c7; color:#b45309; font-size:0.72rem; padding:3px 8px;">
+                                                                <i class="fas fa-pause-circle"></i> ON-HOLD (Detenida)
+                                                            </span>
+                                                        ` : (isOverdue ? `
+                                                            <span class="badge" style="background:#fee2e2; color:#b91c1c; font-size:0.72rem; padding:3px 8px;">
+                                                                <i class="fas fa-clock"></i> Fuera de Plazo (${t.status})
+                                                            </span>
+                                                        ` : `
+                                                            <span class="badge">${t.status}</span>
+                                                        `)}
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge" style="${(t.priority||'').toLowerCase() === 'high' ? 'background:#ef4444; color:white;' : 'background:#f1f5f9; color:#475569;'} font-size:0.7rem;">
+                                                            ${t.priority || 'Normal'}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            `;
+                                        })
+                                    ).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `}
+            </div>
+        `;
+
+        container.innerHTML = html;
+
+        // Render all Chart.js charts
+        window.renderEstPhaseCharts(window.estPhaseCachedData);
+
+    } catch (err) {
+        console.error("Error loading EST Phase Progress:", err);
+        container.innerHTML = `
+            <div style="padding:1.5rem; color:#ef4444; background:#fef2f2; border-radius:8px;">
+                <i class="fas fa-exclamation-triangle"></i> Error al cargar progreso de fases: ${err.message}
+            </div>
+        `;
+    }
+};
+
+/**
+ * Instantiates and paints all Chart.js charts for EST Phase Progress
+ */
+window.renderEstPhaseCharts = function (data) {
+    if (!data || typeof Chart === 'undefined') return;
+
+    window.destroyEstPhaseCharts();
+
+    const chartDefaults = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: { boxWidth: 12, padding: 15, font: { size: 11, family: "'Inter', sans-serif" } }
+            },
+            tooltip: {
+                backgroundColor: 'rgba(255,255,255,0.98)',
+                titleColor: '#0f172a',
+                bodyColor: '#334155',
+                borderColor: '#e2e8f0',
+                borderWidth: 1,
+                padding: 10,
+                boxPadding: 4,
+                usePointStyle: true
+            }
+        }
+    };
+
+    const phaseLabels = data.phasesAnalysis.map(p => p.name);
+
+    // 1. Chart Phase Progress vs Target (Bar)
+    const ctxProgress = document.getElementById('estChartPhaseProgress');
+    if (ctxProgress) {
+        const progressValues = data.phasesAnalysis.map(p => p.progress);
+        const bgColors = data.phasesAnalysis.map(p => {
+            if (p.progress === 100) return '#10b981';
+            if (p.hasProblems) return '#ef4444';
+            if (p.progress > 0) return '#0066FF';
+            return '#94a3b8';
+        });
+
+        window.estPhaseCharts['phaseProgress'] = new Chart(ctxProgress, {
+            type: 'bar',
+            data: {
+                labels: phaseLabels,
+                datasets: [
+                    {
+                        label: 'Avance Real (%)',
+                        data: progressValues,
+                        backgroundColor: bgColors,
+                        borderRadius: 6,
+                        barPercentage: 0.6
+                    },
+                    {
+                        label: 'Objetivo Final (100%)',
+                        data: [100, 100, 100, 100, 100, 100],
+                        backgroundColor: 'rgba(226, 232, 240, 0.6)',
+                        borderRadius: 6,
+                        barPercentage: 0.6
+                    }
+                ]
+            },
+            options: {
+                ...chartDefaults,
+                scales: {
+                    y: { beginAtZero: true, max: 100, grid: { color: '#f1f5f9' }, ticks: { callback: v => v + '%' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    // 2. Chart Phase Slippage / Desviación (Bar Horizontal)
+    const ctxSlippage = document.getElementById('estChartPhaseSlippage');
+    if (ctxSlippage) {
+        const slippageValues = data.phasesAnalysis.map(p => p.slippage);
+        window.estPhaseCharts['phaseSlippage'] = new Chart(ctxSlippage, {
+            type: 'bar',
+            data: {
+                labels: phaseLabels,
+                datasets: [{
+                    label: 'Desvío (+Días de retraso)',
+                    data: slippageValues,
+                    backgroundColor: slippageValues.map(v => v > 0 ? '#ef4444' : '#10b981'),
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                ...chartDefaults,
+                indexAxis: 'y',
+                scales: {
+                    x: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { precision: 0 } },
+                    y: { grid: { display: false } }
+                },
+                plugins: { ...chartDefaults.plugins, legend: { display: false } }
+            }
+        });
+    }
+
+    // 3. Chart Phase Tasks Breakdown (Stacked Bar)
+    const ctxTasks = document.getElementById('estChartPhaseTasksBreakdown');
+    if (ctxTasks) {
+        const doneData = data.phasesAnalysis.map(p => p.tasksDone);
+        const wipData = data.phasesAnalysis.map(p => p.tasksDoing + p.tasksTesting);
+        const overdueData = data.phasesAnalysis.map(p => p.tasksOverdue.length);
+        const onHoldData = data.phasesAnalysis.map(p => p.tasksOnHold);
+
+        window.estPhaseCharts['phaseTasks'] = new Chart(ctxTasks, {
+            type: 'bar',
+            data: {
+                labels: phaseLabels,
+                datasets: [
+                    { label: 'Finalizadas (Done)', data: doneData, backgroundColor: '#10b981', stack: 'tasks' },
+                    { label: 'En Curso (WIP)', data: wipData, backgroundColor: '#3b82f6', stack: 'tasks' },
+                    { label: 'Vencidas (Retraso)', data: overdueData, backgroundColor: '#ef4444', stack: 'tasks' },
+                    { label: 'On-Hold (Bloqueadas)', data: onHoldData, backgroundColor: '#f59e0b', stack: 'tasks' }
+                ]
+            },
+            options: {
+                ...chartDefaults,
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { beginAtZero: true, stacked: true, grid: { color: '#f1f5f9' }, ticks: { precision: 0 } }
+                }
+            }
+        });
+    }
+
+    // 4. Chart Overall Status Distribution (Doughnut)
+    const ctxStatus = document.getElementById('estChartPhaseOverallStatus');
+    if (ctxStatus) {
+        const completedCount = data.phasesAnalysis.filter(p => p.status === 'COMPLETED').length;
+        const inProgressCount = data.phasesAnalysis.filter(p => p.status === 'IN_PROGRESS').length;
+        const delayedCount = data.phasesAnalysis.filter(p => p.status === 'DELAYED').length;
+        const upcomingCount = data.phasesAnalysis.filter(p => p.status === 'UPCOMING').length;
+
+        window.estPhaseCharts['phaseStatus'] = new Chart(ctxStatus, {
+            type: 'doughnut',
+            data: {
+                labels: ['Completadas', 'En Curso', 'Con Retraso / Problemas', 'Próximas'],
+                datasets: [{
+                    data: [completedCount, inProgressCount, delayedCount, upcomingCount],
+                    backgroundColor: ['#10b981', '#0066FF', '#ef4444', '#94a3b8'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                ...chartDefaults,
+                cutout: '68%'
+            }
+        });
+    }
+};
+
+// ========================================================
+// EST MODULE: GESTIÓN Y MATRIZ DE RIESGOS DEL PROYECTO
+// ========================================================
+
+window.estRiskCharts = window.estRiskCharts || {};
+window.estRiskActiveTab = 'all';
+window.estRiskCachedData = null;
+
+/**
+ * Destroys any existing Chart.js instances in EST Risks Module
+ */
+window.destroyEstRiskCharts = function () {
+    if (window.estRiskCharts) {
+        Object.keys(window.estRiskCharts).forEach(key => {
+            if (window.estRiskCharts[key]) {
+                try {
+                    window.estRiskCharts[key].destroy();
+                } catch (e) {
+                    console.warn("Error destroying risk chart", key, e);
+                }
+            }
+        });
+        window.estRiskCharts = {};
+    }
+};
+
+/**
+ * Switch sub-tab in Risks Module
+ */
+window.switchEstRiskTab = function (tabName) {
+    window.estRiskActiveTab = tabName;
+    document.querySelectorAll('.est-risk-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabName);
+    });
+
+    const sections = {
+        'all': ['est-rsec-matrix-row', 'est-rsec-kpis', 'est-rsec-charts-row1', 'est-rsec-table'],
+        'matrix': ['est-rsec-matrix-row', 'est-rsec-kpis'],
+        'charts': ['est-rsec-charts-row1', 'est-rsec-kpis'],
+        'table': ['est-rsec-table']
+    };
+
+    const targetSections = sections[tabName] || sections['all'];
+    ['est-rsec-matrix-row', 'est-rsec-kpis', 'est-rsec-charts-row1', 'est-rsec-table'].forEach(secId => {
+        const el = document.getElementById(secId);
+        if (el) {
+            el.style.display = targetSections.includes(secId) ? 'block' : 'none';
+        }
+    });
+
+    if (window.estRiskCachedData) {
+        setTimeout(() => {
+            window.renderEstRiskCharts(window.estRiskCachedData);
+        }, 50);
+    }
+};
+
+/**
+ * Quick switch active project from Risks Module
+ */
+window.changeEstRiskProject = async function (newProjId) {
+    if (!newProjId) return;
+    const pid = parseInt(newProjId);
+    if (state.selectedProject?.id === pid) return;
+
+    if (supabaseClient) {
+        const { data, error } = await supabaseClient
+            .from('cliente_proy')
+            .select('*, clients(*)')
+            .eq('id', pid)
+            .single();
+
+        if (!error && data) {
+            state.selectedProject = {
+                id: data.id,
+                name: data.id_proyecto,
+                client: data.clients?.nombre_cliente || 'Cliente',
+                client_abrev: data.clients?.abrev || '',
+                client_id: data.client_id,
+                descripcion_prj: data.descripcion_prj || '',
+                sharepoint_url: data.sharepoint_url,
+                go_live_date: data.go_live_date,
+                support_start_date: data.support_start_date,
+                support_end_date: data.support_end_date
+            };
+            saveState();
+            updateUIForUser();
+        }
+    }
+
+    await window.renderEstRisksModule(pid);
+    const incPrjSel = document.getElementById('analytics-filter-project');
+    if (incPrjSel && Array.from(incPrjSel.options).some(o => o.value == String(pid))) {
+        incPrjSel.value = String(pid);
+        if (window.updateIncidentDashboard) window.updateIncidentDashboard();
+    }
+};
+
+/**
+ * Main render function for EST Risks Module
+ */
+window.renderEstRisksModule = async function (targetProjectId) {
+    const container = document.getElementById('est-risks-module-container');
+    if (!container) return;
+
+    if (!supabaseClient) {
+        container.innerHTML = '<div style="padding:1rem; color:#666;">Supabase no inicializado.</div>';
+        return;
+    }
+
+    let projId = parseInt(targetProjectId || state.selectedProject?.id);
+
+    // Fallback: Si no hay proyecto seleccionado, seleccionar el primero disponible
+    if (!projId) {
+        const { data: firstProjs } = await supabaseClient
+            .from('cliente_proy')
+            .select('*, clients(*)')
+            .order('id', { ascending: true })
+            .limit(1);
+
+        if (firstProjs && firstProjs.length > 0) {
+            const p = firstProjs[0];
+            state.selectedProject = {
+                id: p.id,
+                name: p.id_proyecto,
+                client: p.clients?.nombre_cliente || 'Cliente',
+                client_abrev: p.clients?.abrev || '',
+                client_id: p.client_id,
+                descripcion_prj: p.descripcion_prj || '',
+                go_live_date: p.go_live_date
+            };
+            saveState();
+            updateUIForUser();
+            projId = p.id;
+        } else {
+            container.innerHTML = '<div style="padding:1.5rem; color:#64748b; text-align:center;"><i class="fas fa-info-circle"></i> No hay proyectos creados en la base de datos para mostrar la gestión de riesgos.</div>';
+            return;
+        }
+    }
+
+    container.innerHTML = `
+        <div style="text-align:center; padding:2.5rem;">
+            <i class="fas fa-spinner fa-spin fa-2x" style="color:#f59e0b;"></i>
+            <p style="margin-top:0.75rem; color:#64748b; font-weight:500;">Calculando matriz y métricas de riesgos en tiempo real...</p>
+        </div>
+    `;
+
+    try {
+        const [
+            risksRes,
+            currentProjectRes,
+            allProjectsRes
+        ] = await Promise.all([
+            supabaseClient.from('project_risks').select('*').eq('project_id', projId).order('id', { ascending: true }),
+            supabaseClient.from('cliente_proy').select('*, clients(*)').eq('id', projId).single(),
+            supabaseClient.from('cliente_proy').select('id, id_proyecto, descripcion_prj, clients(nombre_cliente)').order('id', { ascending: true })
+        ]);
+
+        const risks = risksRes.data || [];
+        const projectData = currentProjectRes.data || state.selectedProject || {};
+
+        // Normalizadores de Probabilidad e Impacto
+        const probWeight = (p) => {
+            const s = (p || '').trim().toUpperCase();
+            if (s === 'MUY ALTA') return 4;
+            if (s === 'ALTA' || s === 'ALTO') return 3;
+            if (s === 'MEDIA' || s === 'MEDIO') return 2;
+            return 1; // Baja
+        };
+
+        const impWeight = (i) => {
+            const s = (i || '').trim().toUpperCase();
+            if (s === 'CRÍTICO' || s === 'CRITICO' || s === 'MUY ALTO') return 4;
+            if (s === 'ALTO' || s === 'ALTA') return 3;
+            if (s === 'MEDIO' || s === 'MEDIA') return 2;
+            return 1; // Bajo
+        };
+
+        const totalRisks = risks.length;
+        const openRisks = risks.filter(r => (r.estado || 'Abierto').toLowerCase() === 'abierto');
+        const mitigatingRisks = risks.filter(r => (r.estado || '').toLowerCase().includes('mitiga'));
+        const closedRisks = risks.filter(r => (r.estado || '').toLowerCase() === 'cerrado');
+        const activeRisks = risks.filter(r => (r.estado || '').toLowerCase() !== 'cerrado');
+
+        // Riesgos Críticos / Alto Impacto
+        const highImpactRisks = activeRisks.filter(r => {
+            const imp = impWeight(r.impacto);
+            const prio = parseInt(r.prioridad || 0);
+            return imp >= 3 || prio >= 7;
+        });
+
+        // Riesgos con Estrategia / Plan definido
+        const withPlanRisks = risks.filter(r => (r.plan_respuesta && r.plan_respuesta.trim().length > 0) || (r.estrategia_respuesta && r.estrategia_respuesta.trim().length > 0));
+        const coverageRate = totalRisks > 0 ? Math.round((withPlanRisks.length / totalRisks) * 100) : 100;
+
+        // Cálculo de Puntuación Global de Exposición al Riesgo (0 - 100%)
+        let totalActiveSeverity = 0;
+        activeRisks.forEach(r => {
+            totalActiveSeverity += (probWeight(r.probabilidad) * impWeight(r.impacto));
+        });
+
+        // Máxima severidad posible si todos los riesgos activos fueran 16 (4x4)
+        const maxPossibleSeverity = activeRisks.length * 16;
+        let riskExposureScore = 0;
+        if (activeRisks.length > 0) {
+            riskExposureScore = Math.min(100, Math.round((totalActiveSeverity / maxPossibleSeverity) * 100));
+        }
+
+        let exposureBadgeClass = 'est-phase-badge completed';
+        let exposureLabel = 'Riesgo Controlado';
+        let exposureIcon = 'fa-check-circle';
+        if (riskExposureScore > 50 || highImpactRisks.length > 2) {
+            exposureBadgeClass = 'est-phase-badge delayed';
+            exposureLabel = 'Exposición Crítica';
+            exposureIcon = 'fa-exclamation-triangle';
+        } else if (riskExposureScore > 25 || highImpactRisks.length > 0) {
+            exposureBadgeClass = 'est-phase-badge in-progress';
+            exposureLabel = 'Exposición Moderada';
+            exposureIcon = 'fa-exclamation-circle';
+        }
+
+        // Matriz de Severidad 4x4: Celda [Prob 1..4][Imp 1..4]
+        // Prob: 4=Muy Alta, 3=Alta, 2=Media, 1=Baja
+        // Imp:  1=Bajo, 2=Medio, 3=Alto, 4=Crítico
+        const matrixCounts = {
+            4: { 1: [], 2: [], 3: [], 4: [] },
+            3: { 1: [], 2: [], 3: [], 4: [] },
+            2: { 1: [], 2: [], 3: [], 4: [] },
+            1: { 1: [], 2: [], 3: [], 4: [] }
+        };
+
+        risks.forEach(r => {
+            const p = probWeight(r.probabilidad);
+            const i = impWeight(r.impacto);
+            if (matrixCounts[p] && matrixCounts[p][i]) {
+                matrixCounts[p][i].push(r);
+            }
+        });
+
+        // Cache para gráficos y tabs
+        window.estRiskCachedData = {
+            risks,
+            totalRisks,
+            openRisksCount: openRisks.length,
+            mitigatingRisksCount: mitigatingRisks.length,
+            closedRisksCount: closedRisks.length,
+            activeRisksCount: activeRisks.length,
+            highImpactCount: highImpactRisks.length,
+            coverageRate,
+            riskExposureScore,
+            matrixCounts,
+            projId,
+            projectData
+        };
+
+        // Project selector options
+        const projectOptions = (allProjectsRes.data || []).map(p => `
+            <option value="${p.id}" ${p.id === projId ? 'selected' : ''}>
+                ${p.id_proyecto} - ${p.descripcion_prj || p.clients?.nombre_cliente || ''}
+            </option>
+        `).join('');
+
+        // Helper para pintar celda de la matriz
+        const renderMatrixCell = (probVal, impVal) => {
+            const cellRisks = matrixCounts[probVal][impVal] || [];
+            const count = cellRisks.length;
+            const score = probVal * impVal;
+
+            let zoneClass = 'zone-low';
+            if (score >= 12) zoneClass = 'zone-critical';
+            else if (score >= 8) zoneClass = 'zone-high';
+            else if (score >= 4) zoneClass = 'zone-med';
+
+            const activeInCell = cellRisks.filter(r => (r.estado || '').toLowerCase() !== 'cerrado').length;
+
+            return `
+                <td class="est-risk-matrix-cell ${zoneClass}" title="Prob: ${probVal}, Imp: ${impVal} (Severidad ${score}/16) - ${count} riesgos (${activeInCell} activos)">
+                    <div style="font-size:1.15rem; font-weight:800;">${count > 0 ? count : '-'}</div>
+                    ${count > 0 ? `<div style="font-size:0.68rem; font-weight:600; opacity:0.85;">${activeInCell} activos</div>` : ''}
+                </td>
+            `;
+        };
+
+        // BUILD HTML INTERFACE
+        let html = `
+            <!-- TOOLBAR SUPERIOR GESTIÓN DE RIESGOS -->
+            <div class="est-exec-toolbar">
+                <div class="est-exec-project-badge">
+                    <div class="est-exec-avatar" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div>
+                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                            <h3 style="margin:0; font-size:1.15rem; color:#1e293b; font-weight:700;">
+                                ${projectData.id_proyecto || 'Proyecto'} - ${projectData.descripcion_prj || ''}
+                            </h3>
+                            <span class="${exposureBadgeClass}">
+                                <i class="fas ${exposureIcon}"></i> ${riskExposureScore}% - ${exposureLabel}
+                            </span>
+                        </div>
+                        <p style="margin:3px 0 0; font-size:0.82rem; color:#64748b;">
+                            <i class="fas fa-building" style="margin-right:4px;"></i> Cliente: <strong>${projectData.clients?.nombre_cliente || state.selectedProject?.client || 'N/A'}</strong> 
+                            | <i class="fas fa-shield-alt" style="margin-left:6px; margin-right:4px;"></i> Riesgos Activos: <strong>${activeRisks.length}</strong> de ${totalRisks}
+                            | <i class="fas fa-fire" style="margin-left:6px; margin-right:4px;"></i> Alto Impacto / Críticos: <strong style="color:${highImpactRisks.length > 0 ? '#dc2626' : '#166534'}">${highImpactRisks.length}</strong>
+                        </p>
+                    </div>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <div class="no-print" style="display:flex; align-items:center; gap:6px;">
+                        <label style="font-size:0.8rem; font-weight:600; color:#475569;"><i class="fas fa-exchange-alt"></i> Cambiar PRJ:</label>
+                        <select class="swal2-input" style="width:auto; margin:0; height:36px; font-size:0.85rem; padding:4px 8px;" onchange="window.changeEstRiskProject(this.value)">
+                            ${projectOptions}
+                        </select>
+                    </div>
+                    <button class="btn btn-outline no-print" style="width:auto; height:36px; padding:0 12px; font-size:0.85rem;" onclick="window.renderEstRisksModule(${projId})" title="Recargar riesgos en tiempo real">
+                        <i class="fas fa-sync-alt"></i> Actualizar
+                    </button>
+                    <button class="btn no-print" style="width:auto; height:36px; padding:0 12px; font-size:0.85rem; background:#0066FF; color:white;" onclick="openRiskModal()" title="Registrar nuevo riesgo para este proyecto">
+                        <i class="fas fa-plus"></i> Nuevo Riesgo
+                    </button>
+                    <button class="btn no-print" style="width:auto; height:36px; padding:0 12px; font-size:0.85rem; background:#334155; color:white;" onclick="window.printEstPart(this)" title="Imprimir informe de riesgos">
+                        <i class="fas fa-file-pdf"></i> Imprimir / PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- SMART RISK ALERTS (ALERTAS DE SEVERIDAD) -->
+            <div class="exec-smart-alerts-container">
+                ${highImpactRisks.length > 0 ? `
+                    <div class="exec-alert-item danger">
+                        <div>
+                            <i class="fas fa-fire" style="font-size:1.15rem; margin-right:8px;"></i>
+                            <strong>Atención Inmediata Requerida:</strong> Existen <strong>${highImpactRisks.length} riesgo(s) de Alto Impacto o Críticos</strong> activos que requieren plan de mitigación prioritario.
+                        </div>
+                        <button class="btn btn-outline btn-sm" style="padding:2px 10px; font-size:0.75rem; border-color:#ef4444; color:#b91c1c;" onclick="window.switchEstRiskTab('table')">
+                            Ver Riesgos Críticos <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                ` : ''}
+
+                ${coverageRate < 75 && totalRisks > 0 ? `
+                    <div class="exec-alert-item warning">
+                        <div>
+                            <i class="fas fa-clipboard-check" style="font-size:1.15rem; margin-right:8px;"></i>
+                            <strong>Planes de Mitigación Incompletos:</strong> El <strong>${100 - coverageRate}%</strong> de los riesgos registrados aún no tiene asignada una estrategia o plan de respuesta formal.
+                        </div>
+                        <button class="btn btn-outline btn-sm" style="padding:2px 10px; font-size:0.75rem; border-color:#f59e0b; color:#92400e;" onclick="window.switchEstRiskTab('table')">
+                            Completar Planes <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                ` : ''}
+
+                ${highImpactRisks.length === 0 && totalRisks > 0 ? `
+                    <div class="exec-alert-item success">
+                        <div>
+                            <i class="fas fa-check-circle" style="font-size:1.15rem; margin-right:8px;"></i>
+                            <strong>Nivel de Riesgo Controlado:</strong> No hay riesgos críticos no mitigados que comprometan los objetivos ni el Go-Live del proyecto.
+                        </div>
+                    </div>
+                ` : ''}
+
+                ${totalRisks === 0 ? `
+                    <div class="exec-alert-item info">
+                        <div>
+                            <i class="fas fa-info-circle" style="font-size:1.15rem; margin-right:8px;"></i>
+                            <strong>Sin Riesgos Registrados:</strong> No se han identificado riesgos formalmente para este proyecto en el módulo PRJ.
+                        </div>
+                        <button class="btn btn-outline btn-sm" style="padding:2px 10px; font-size:0.75rem; border-color:#0284c7; color:#0369a1;" onclick="openRiskModal()">
+                            <i class="fas fa-plus"></i> Registrar Primer Riesgo
+                        </button>
+                    </div>
+                ` : ''}
+            </div>
+
+            <!-- NAVEGACIÓN SUB-TABS RIESGOS -->
+            <div class="est-exec-tabs est-risk-tabs">
+                <button class="est-exec-tab-btn est-risk-tab-btn active" data-tab="all" onclick="window.switchEstRiskTab('all')">
+                    <i class="fas fa-th-large"></i> Visión Global & Matriz
+                </button>
+                <button class="est-exec-tab-btn est-risk-tab-btn" data-tab="matrix" onclick="window.switchEstRiskTab('matrix')">
+                    <i class="fas fa-border-all"></i> Matriz de Calor 4x4
+                </button>
+                <button class="est-exec-tab-btn est-risk-tab-btn" data-tab="charts" onclick="window.switchEstRiskTab('charts')">
+                    <i class="fas fa-chart-pie"></i> Gráficos Analíticos
+                </button>
+                <button class="est-exec-tab-btn est-risk-tab-btn" data-tab="table" onclick="window.switchEstRiskTab('table')">
+                    <i class="fas fa-list-alt"></i> Detalle de Riesgos (Auditoría ALV)
+                </button>
+            </div>
+
+            <!-- BLOQUE: KPI CARDS EJECUTIVAS DE RIESGOS -->
+            <div id="est-rsec-kpis" class="analytics-kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin-bottom:1.5rem;">
+                <div class="kpi-card-modern kpi-total">
+                    <div class="kpi-title">TOTAL RIESGOS IDENTIFICADOS</div>
+                    <div class="kpi-value">${totalRisks}</div>
+                    <i class="fas fa-shield-alt kpi-icon"></i>
+                    <div class="kpi-trend neutral">
+                        <span>${closedRisks.length} cerrados / mitigados</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card-modern ${openRisks.length > 0 ? 'kpi-open' : 'kpi-resolved'}">
+                    <div class="kpi-title">RIESGOS ACTIVOS EN CURSO</div>
+                    <div class="kpi-value">${activeRisks.length}</div>
+                    <i class="fas fa-exclamation-triangle kpi-icon"></i>
+                    <div class="kpi-trend neutral">
+                        <span>${mitigatingRisks.length} en mitigación / ${openRisks.length} abiertos</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card-modern ${highImpactRisks.length > 0 ? 'kpi-critical' : 'kpi-resolved'}">
+                    <div class="kpi-title">ALTO IMPACTO / CRÍTICOS</div>
+                    <div class="kpi-value" style="${highImpactRisks.length > 0 ? 'color:#ef4444;' : ''}">${highImpactRisks.length}</div>
+                    <i class="fas fa-fire kpi-icon"></i>
+                    <div class="kpi-trend ${highImpactRisks.length > 0 ? 'negative' : 'positive'}">
+                        <span>${highImpactRisks.length > 0 ? 'Requieren acción inmediata' : 'Sin riesgos críticos'}</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card-modern ${coverageRate >= 80 ? 'kpi-resolved' : 'kpi-open'}">
+                    <div class="kpi-title">COBERTURA PLANES DE RESPUESTA</div>
+                    <div class="kpi-value">${coverageRate}%</div>
+                    <i class="fas fa-clipboard-check kpi-icon"></i>
+                    <div class="kpi-trend ${coverageRate >= 80 ? 'positive' : 'negative'}">
+                        <span>${withPlanRisks.length} de ${totalRisks} con estrategia</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BLOQUE: MATRIZ DE CALOR 4x4 (HEATMAP) Y DISTRIBUCIÓN -->
+            <div id="est-rsec-matrix-row" style="display:grid; grid-template-columns: 3fr 2fr; gap:1.5rem; margin-bottom:1.5rem;">
+                <!-- MATRIZ 4x4 INTERACTIVA -->
+                <div class="est-risk-matrix-wrapper">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                        <h4 style="margin:0; font-size:1rem; color:#1e293b; font-weight:700; display:flex; align-items:center; gap:8px;">
+                            <i class="fas fa-border-all" style="color:#f59e0b;"></i> Matriz de Severidad de Riesgos (Probabilidad vs Impacto)
+                        </h4>
+                        <span style="font-size:0.75rem; color:#64748b;">Número de riesgos por cuadrante</span>
+                    </div>
+
+                    <table class="est-risk-matrix-table">
+                        <thead>
+                            <tr>
+                                <th style="width:110px; text-align:left;">Probabilidad \ Impacto</th>
+                                <th style="width:22%;">1. Bajo</th>
+                                <th style="width:22%;">2. Medio</th>
+                                <th style="width:22%;">3. Alto</th>
+                                <th style="width:22%;">4. Crítico</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <th style="text-align:left;">4. Muy Alta</th>
+                                ${renderMatrixCell(4, 1)}
+                                ${renderMatrixCell(4, 2)}
+                                ${renderMatrixCell(4, 3)}
+                                ${renderMatrixCell(4, 4)}
+                            </tr>
+                            <tr>
+                                <th style="text-align:left;">3. Alta</th>
+                                ${renderMatrixCell(3, 1)}
+                                ${renderMatrixCell(3, 2)}
+                                ${renderMatrixCell(3, 3)}
+                                ${renderMatrixCell(3, 4)}
+                            </tr>
+                            <tr>
+                                <th style="text-align:left;">2. Media</th>
+                                ${renderMatrixCell(2, 1)}
+                                ${renderMatrixCell(2, 2)}
+                                ${renderMatrixCell(2, 3)}
+                                ${renderMatrixCell(2, 4)}
+                            </tr>
+                            <tr>
+                                <th style="text-align:left;">1. Baja</th>
+                                ${renderMatrixCell(1, 1)}
+                                ${renderMatrixCell(1, 2)}
+                                ${renderMatrixCell(1, 3)}
+                                ${renderMatrixCell(1, 4)}
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-top:12px; padding-top:10px; border-top:1px dashed #e2e8f0; font-size:0.75rem; color:#64748b; gap:8px;">
+                        <span style="font-weight:700;">Nivel de Severidad:</span>
+                        <span style="display:flex; align-items:center; gap:4px;"><span style="width:12px; height:12px; border-radius:3px; background:#dcfce7; border:1px solid #bbf7d0; display:inline-block;"></span> Bajo (1-3)</span>
+                        <span style="display:flex; align-items:center; gap:4px;"><span style="width:12px; height:12px; border-radius:3px; background:#fef3c7; border:1px solid #fde68a; display:inline-block;"></span> Moderado (4-6)</span>
+                        <span style="display:flex; align-items:center; gap:4px;"><span style="width:12px; height:12px; border-radius:3px; background:#fee2e2; border:1px solid #fecaca; display:inline-block;"></span> Alto (8-9)</span>
+                        <span style="display:flex; align-items:center; gap:4px;"><span style="width:12px; height:12px; border-radius:3px; background:#ef4444; border:1px solid #dc2626; display:inline-block;"></span> Crítico (12-16)</span>
+                    </div>
+                </div>
+
+                <!-- GRÁFICO: DISTRIBUCIÓN POR ESTADO DE GESTIÓN -->
+                <div class="analytics-chart-card">
+                    <h4><i class="fas fa-chart-pie" style="color:#0066FF;"></i> Estado del Ciclo de Vida de Riesgos</h4>
+                    <div class="analytics-chart-container">
+                        <canvas id="estChartRiskStatus"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BLOQUE: GRÁFICOS DE ESTRATEGIAS Y PRIORIDADES -->
+            <div id="est-rsec-charts-row1" class="analytics-chart-grid" style="grid-template-columns: 1fr 1fr; margin-bottom:1.5rem;">
+                <div class="analytics-chart-card">
+                    <h4><i class="fas fa-lightbulb" style="color:#f59e0b;"></i> Estrategias de Respuesta Adoptadas</h4>
+                    <div class="analytics-chart-container">
+                        <canvas id="estChartRiskStrategies"></canvas>
+                    </div>
+                </div>
+
+                <div class="analytics-chart-card">
+                    <h4><i class="fas fa-signal" style="color:#ef4444;"></i> Riesgos por Escala de Prioridad (1-10)</h4>
+                    <div class="analytics-chart-container">
+                        <canvas id="estChartRiskPriorities"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BLOQUE: TABLA DETALLADA DE RIESGOS (AUDITORÍA ALV) -->
+            <div id="est-rsec-table" style="background:#fff; border-radius:12px; border:1px solid #e2e8f0; padding:1.25rem; margin-bottom:1.5rem; box-shadow:0 2px 6px rgba(0,0,0,0.02);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
+                    <h4 style="margin:0; font-size:1.05rem; color:#1e293b; font-weight:700; display:flex; align-items:center; gap:8px;">
+                        <i class="fas fa-table" style="color:#f59e0b"></i> Registro Detallado y Seguimiento de Riesgos (${totalRisks})
+                    </h4>
+                    <button class="btn btn-outline btn-sm" onclick="openRiskModal()">
+                        <i class="fas fa-plus"></i> Añadir Riesgo
+                    </button>
+                </div>
+
+                ${totalRisks === 0 ? `
+                    <div style="text-align:center; padding:2rem; color:#94a3b8; background:#f8fafc; border-radius:8px; border:1px dashed #e2e8f0;">
+                        <i class="fas fa-shield-alt fa-2x" style="opacity:0.4; margin-bottom:0.5rem;"></i>
+                        <p style="margin:0; font-weight:500;">No hay riesgos identificados para este proyecto en la base de datos.</p>
+                    </div>
+                ` : `
+                    <div style="overflow-x:auto;">
+                        <table class="exec-drilldown-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:40px;">Nº</th>
+                                    <th>Riesgo Identificado</th>
+                                    <th>Causa Raíz</th>
+                                    <th>Probabilidad</th>
+                                    <th>Impacto</th>
+                                    <th>Prioridad</th>
+                                    <th>Estrategia</th>
+                                    <th>Plan de Respuesta</th>
+                                    <th>Estado</th>
+                                    <th style="width:80px; text-align:center;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${risks.map((r, index) => {
+                                    const prioVal = parseInt(r.prioridad || 0);
+                                    const prioColor = prioVal >= 7 ? '#dc2626' : (prioVal >= 4 ? '#d97706' : '#166534');
+
+                                    const probBadge = (p) => {
+                                        const w = probWeight(p);
+                                        const bg = w >= 3 ? '#fee2e2; color:#b91c1c;' : (w === 2 ? '#fef3c7; color:#b45309;' : '#dcfce7; color:#15803d;');
+                                        return `<span class="badge" style="background:${bg}; font-size:0.72rem; padding:2px 6px;">${p || 'Media'}</span>`;
+                                    };
+
+                                    const impBadge = (i) => {
+                                        const w = impWeight(i);
+                                        const bg = w >= 3 ? '#fee2e2; color:#b91c1c;' : (w === 2 ? '#fef3c7; color:#b45309;' : '#dcfce7; color:#15803d;');
+                                        return `<span class="badge" style="background:${bg}; font-size:0.72rem; padding:2px 6px;">${i || 'Medio'}</span>`;
+                                    };
+
+                                    const statusBadge = (s) => {
+                                        const st = (s || 'Abierto').toLowerCase();
+                                        if (st === 'cerrado') return `<span class="badge" style="background:#dcfce7; color:#15803d;"><i class="fas fa-check"></i> Cerrado</span>`;
+                                        if (st.includes('mitiga')) return `<span class="badge" style="background:#fef3c7; color:#b45309;"><i class="fas fa-spinner fa-spin"></i> En Mitigación</span>`;
+                                        return `<span class="badge" style="background:#fee2e2; color:#b91c1c;"><i class="fas fa-exclamation-circle"></i> Abierto</span>`;
+                                    };
+
+                                    return `
+                                        <tr>
+                                            <td style="font-weight:700; color:#64748b;">${index + 1}</td>
+                                            <td><strong>${r.riesgo_identificado || 'Sin descripción'}</strong></td>
+                                            <td style="color:#64748b; font-size:0.8rem;">${r.causa || '-'}</td>
+                                            <td>${probBadge(r.probabilidad)}</td>
+                                            <td>${impBadge(r.impacto)}</td>
+                                            <td><strong style="color:${prioColor}; font-size:0.95rem;">${prioVal}</strong></td>
+                                            <td>
+                                                <span class="est-phase-stat-pill ${r.estrategia_respuesta ? 'success' : 'warning'}">
+                                                    ${r.estrategia_respuesta || 'Sin estrategia'}
+                                                </span>
+                                            </td>
+                                            <td style="font-size:0.8rem; color:#334155;">${r.plan_respuesta || '<span style="color:#94a3b8;">Sin plan</span>'}</td>
+                                            <td>${statusBadge(r.estado)}</td>
+                                            <td style="text-align:center;">
+                                                <button class="btn-icon" title="Editar en modal de riesgos" onclick="openRiskModal('${r.id}')" style="padding:4px 8px; font-size:0.85rem;">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `}
+            </div>
+        `;
+
+        container.innerHTML = html;
+
+        // Render all Chart.js charts
+        window.renderEstRiskCharts(window.estRiskCachedData);
+
+    } catch (err) {
+        console.error("Error loading EST Risks Module:", err);
+        container.innerHTML = `
+            <div style="padding:1.5rem; color:#ef4444; background:#fef2f2; border-radius:8px;">
+                <i class="fas fa-exclamation-triangle"></i> Error al cargar módulo de riesgos: ${err.message}
+            </div>
+        `;
+    }
+};
+
+/**
+ * Instantiates and paints all Chart.js charts for EST Risks Module
+ */
+window.renderEstRiskCharts = function (data) {
+    if (!data || typeof Chart === 'undefined') return;
+
+    window.destroyEstRiskCharts();
+
+    const chartDefaults = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: { boxWidth: 12, padding: 15, font: { size: 11, family: "'Inter', sans-serif" } }
+            },
+            tooltip: {
+                backgroundColor: 'rgba(255,255,255,0.98)',
+                titleColor: '#0f172a',
+                bodyColor: '#334155',
+                borderColor: '#e2e8f0',
+                borderWidth: 1,
+                padding: 10,
+                boxPadding: 4,
+                usePointStyle: true
+            }
+        }
+    };
+
+    // 1. Chart Risk Status (Doughnut)
+    const ctxStatus = document.getElementById('estChartRiskStatus');
+    if (ctxStatus) {
+        window.estRiskCharts['riskStatus'] = new Chart(ctxStatus, {
+            type: 'doughnut',
+            data: {
+                labels: ['Abiertos (Pendientes)', 'En Mitigación', 'Cerrados / Mitigados'],
+                datasets: [{
+                    data: [data.openRisksCount, data.mitigatingRisksCount, data.closedRisksCount],
+                    backgroundColor: ['#ef4444', '#f59e0b', '#10b981'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                ...chartDefaults,
+                cutout: '68%'
+            }
+        });
+    }
+
+    // 2. Chart Risk Strategies (Bar Horizontal)
+    const ctxStrategies = document.getElementById('estChartRiskStrategies');
+    if (ctxStrategies) {
+        const stratMap = { 'Mitigar': 0, 'Evitar': 0, 'Transferir': 0, 'Aceptar': 0, 'Sin definir': 0 };
+        data.risks.forEach(r => {
+            const st = (r.estrategia_respuesta || '').trim();
+            if (st.toLowerCase().includes('mitig')) stratMap['Mitigar']++;
+            else if (st.toLowerCase().includes('evit')) stratMap['Evitar']++;
+            else if (st.toLowerCase().includes('transf')) stratMap['Transferir']++;
+            else if (st.toLowerCase().includes('acept')) stratMap['Aceptar']++;
+            else stratMap['Sin definir']++;
+        });
+
+        window.estRiskCharts['riskStrategies'] = new Chart(ctxStrategies, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(stratMap),
+                datasets: [{
+                    label: 'Nº Riesgos',
+                    data: Object.values(stratMap),
+                    backgroundColor: ['#3b82f6', '#8b5cf6', '#06b6d4', '#10b981', '#94a3b8'],
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                ...chartDefaults,
+                indexAxis: 'y',
+                scales: {
+                    x: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { precision: 0 } },
+                    y: { grid: { display: false } }
+                },
+                plugins: { ...chartDefaults.plugins, legend: { display: false } }
+            }
+        });
+    }
+
+    // 3. Chart Risk Priorities (Bar)
+    const ctxPriorities = document.getElementById('estChartRiskPriorities');
+    if (ctxPriorities) {
+        const pCritical = data.risks.filter(r => parseInt(r.prioridad || 0) >= 8).length;
+        const pHigh = data.risks.filter(r => {
+            const p = parseInt(r.prioridad || 0);
+            return p >= 6 && p < 8;
+        }).length;
+        const pMedium = data.risks.filter(r => {
+            const p = parseInt(r.prioridad || 0);
+            return p >= 4 && p < 6;
+        }).length;
+        const pLow = data.risks.filter(r => {
+            const p = parseInt(r.prioridad || 0);
+            return p < 4;
+        }).length;
+
+        window.estRiskCharts['riskPriorities'] = new Chart(ctxPriorities, {
+            type: 'bar',
+            data: {
+                labels: ['Crítica (8-10)', 'Alta (6-7)', 'Media (4-5)', 'Baja (1-3)'],
+                datasets: [{
+                    label: 'Nº Riesgos',
+                    data: [pCritical, pHigh, pMedium, pLow],
+                    backgroundColor: ['#ef4444', '#ea580c', '#f59e0b', '#10b981'],
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                ...chartDefaults,
+                scales: {
+                    y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { precision: 0 } },
+                    x: { grid: { display: false } }
+                },
+                plugins: { ...chartDefaults.plugins, legend: { display: false } }
+            }
+        });
+    }
+};
+
+
+
+
 
 function renderReportingModule() {
     elements.moduleContent.innerHTML = `
@@ -7219,6 +12549,10 @@ document.addEventListener('DOMContentLoaded', () => {
             closeIncidentModal();
             Swal.fire('Éxito', 'Incidencia guardada correctamente.', 'success');
             if (state.activeModule === 'rep') renderReportingModule();
+            if (state.activeModule === 'est') {
+                if (window.fetchLiveIncidentsAndUpdate) window.fetchLiveIncidentsAndUpdate();
+                else if (window.updateIncidentDashboard) window.updateIncidentDashboard();
+            }
         }
     });
 
@@ -7269,6 +12603,67 @@ async function addIncidentAuditLog(incidentId, action, field, oldVal, newVal) {
     }
 }
 
+window.fetchLiveIncidentsAndUpdate = async function(preferredProjectId = null) {
+    const refreshIcon = document.getElementById('analytics-refresh-icon');
+    if (refreshIcon) refreshIcon.classList.add('fa-spin');
+    const timestampEl = document.getElementById('analytics-live-timestamp');
+    if (timestampEl) timestampEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando incidencias on-line con Supabase...';
+
+    try {
+        if (supabaseClient) {
+            // 1. Fetch live incidents from Supabase
+            const { data: liveIncidents, error: incError } = await supabaseClient
+                .from('incidencias')
+                .select('*')
+                .order('id', { ascending: false });
+
+            if (!incError && liveIncidents) {
+                state.incidents = liveIncidents;
+            } else if (incError) {
+                console.error('Error al sincronizar incidencias on-line:', incError);
+            }
+
+            // 2. Fetch projects for dropdown
+            const { data: projs, error: projError } = await supabaseClient
+                .from('cliente_proy')
+                .select('id, id_proyecto, descripcion_prj, clients(nombre_cliente)')
+                .order('id', { ascending: true });
+
+            const projSelect = document.getElementById('analytics-filter-project');
+            if (projSelect && projs) {
+                const currentVal = projSelect.value;
+                const defaultTarget = preferredProjectId !== null && preferredProjectId !== undefined 
+                    ? String(preferredProjectId) 
+                    : (state.selectedProject?.id ? String(state.selectedProject.id) : '');
+                const targetVal = currentVal !== '' ? currentVal : defaultTarget;
+
+                let optionsHtml = '<option value="">-- Todos los Proyectos --</option>';
+                projs.forEach(p => {
+                    const pLabel = `${p.id_proyecto} - ${p.descripcion_prj || p.clients?.nombre_cliente || ''}`;
+                    optionsHtml += `<option value="${p.id}">${pLabel}</option>`;
+                });
+                projSelect.innerHTML = optionsHtml;
+
+                if (targetVal && Array.from(projSelect.options).some(o => o.value === String(targetVal))) {
+                    projSelect.value = String(targetVal);
+                } else {
+                    projSelect.value = '';
+                }
+            }
+        }
+    } catch (err) {
+        console.error('Error en fetchLiveIncidentsAndUpdate:', err);
+    } finally {
+        if (refreshIcon) refreshIcon.classList.remove('fa-spin');
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        if (timestampEl) {
+            timestampEl.innerHTML = `<i class="fas fa-check-circle" style="color:#10b981;"></i> Conectado on-line (Última actualización: ${timeStr})`;
+        }
+        window.updateIncidentDashboard();
+    }
+};
+
 window.updateIncidentDashboard = function() {
     let data = state.incidents || [];
     
@@ -7279,10 +12674,16 @@ window.updateIncidentDashboard = function() {
         }
     }
 
+    const projSelect = document.getElementById('analytics-filter-project');
+    const prjF = projSelect ? projSelect.value : '';
     const statusF = document.getElementById('analytics-filter-status')?.value;
     const priorityF = document.getElementById('analytics-filter-priority')?.value;
     const typeF = document.getElementById('analytics-filter-type')?.value;
     const lobF = document.getElementById('analytics-filter-lob')?.value;
+
+    if (prjF) {
+        data = data.filter(i => (i.proyecto_id == prjF || i.project_id == prjF));
+    }
 
     if (statusF) {
         data = data.filter(i => statusF === 'Abiertas' 
@@ -7293,6 +12694,15 @@ window.updateIncidentDashboard = function() {
     if (priorityF) data = data.filter(i => i.prioridad === priorityF);
     if (typeF) data = data.filter(i => i.tipo === typeF);
     if (lobF) data = data.filter(i => i.lob === lobF);
+
+    const filterInfo = document.getElementById('analytics-current-filter-info');
+    if (filterInfo) {
+        let label = 'Todos los Proyectos';
+        if (projSelect && projSelect.selectedIndex > 0) {
+            label = projSelect.options[projSelect.selectedIndex].text;
+        }
+        filterInfo.innerHTML = `<i class="fas fa-filter"></i> ${label} <span style="color:#64748b; font-weight:normal;">(${data.length} de ${(state.incidents || []).length} incidencias)</span>`;
+    }
 
     initIncidentCharts(data);
 };
@@ -7307,6 +12717,10 @@ function initIncidentCharts(filteredData = null) {
         if (state.currentUser && (state.currentUser.user_type === 'Cliente' || state.currentUser.role === 'Cliente')) {
             const clientAbrev = state.currentUser.abrev || state.currentUser.abrev_cliente;
             if (clientAbrev) data = data.filter(i => i.numero_incidencia && i.numero_incidencia.startsWith(clientAbrev));
+        }
+        const prjF = document.getElementById('analytics-filter-project')?.value;
+        if (prjF) {
+            data = data.filter(i => (i.proyecto_id == prjF || i.project_id == prjF));
         }
     }
 
@@ -7349,13 +12763,17 @@ function initIncidentCharts(filteredData = null) {
             window.analyticsCharts[cfg.id].destroy();
         }
 
+        const labels = Object.keys(cfg.data);
+        const chartValues = Object.values(cfg.data);
+        const hasData = labels.length > 0;
+
         window.analyticsCharts[cfg.id] = new Chart(ctx, {
             type: cfg.type,
             data: {
-                labels: Object.keys(cfg.data),
+                labels: hasData ? labels : ['Sin datos'],
                 datasets: [{
-                    data: Object.values(cfg.data),
-                    backgroundColor: cfg.colors,
+                    data: hasData ? chartValues : [0],
+                    backgroundColor: hasData ? cfg.colors : ['#e2e8f0'],
                     borderWidth: 0,
                     borderRadius: cfg.type === 'bar' ? 6 : 0,
                     hoverOffset: 4
@@ -7367,11 +12785,12 @@ function initIncidentCharts(filteredData = null) {
                 cutout: cfg.type === 'doughnut' ? '70%' : undefined,
                 plugins: {
                     legend: {
-                        display: cfg.type !== 'bar',
+                        display: cfg.type !== 'bar' && hasData,
                         position: 'right',
                         labels: { boxWidth: 12, font: { size: 11, family: "'Inter', sans-serif" }, usePointStyle: true, padding: 20 }
                     },
                     tooltip: {
+                        enabled: hasData,
                         backgroundColor: 'rgba(255,255,255,0.95)',
                         titleColor: '#1e293b',
                         bodyColor: '#334155',
@@ -7825,6 +13244,7 @@ async function loadUATTracking() {
         return;
     }
 
+    state.trackingUATs = data;
     if (actions) actions.style.display = 'block';
     renderUATTrackingTable(data);
 }
@@ -7837,59 +13257,69 @@ function renderUATTrackingTable(data) {
     const uniqueScopeItems = [...new Set(data.map(u => u.proceso_scope_item).filter(Boolean))].sort();
 
     container.innerHTML = `
-                                            <div class="tracking-filters" style="display:flex; gap:15px; margin-bottom:15px; background:#f8f9fa; padding:12px; border-radius:8px; border:1px solid #eee; align-items:flex-end;">
-                                                <div class="filter-group">
-                                                    <label style="font-size:0.7rem; font-weight:bold; display:block; margin-bottom:4px; color:#555;">LOB:</label>
-                                                    <select id="filter-tracking-lob" class="form-control compact" onchange="applyUATTrackingFilters()" style="width:150px">
-                                                        <option value="">-- Todos --</option>
-                                                        ${uniqueLobs.map(l => `<option value="${l}">${l}</option>`).join('')}
-                                                    </select>
-                                                </div>
-                                                <div class="filter-group">
-                                                    <label style="font-size:0.7rem; font-weight:bold; display:block; margin-bottom:4px; color:#555;">ESCENARIO:</label>
-                                                    <input type="text" id="filter-tracking-scenario" class="form-control compact" placeholder="Buscar escenario..." onkeyup="applyUATTrackingFilters()" style="width:250px">
-                                                </div>
-                                                <div class="filter-group">
-                                                    <label style="font-size:0.7rem; font-weight:bold; display:block; margin-bottom:4px; color:#555;">SCOPE ITEM:</label>
-                                                    <select id="filter-tracking-scope" class="form-control compact" onchange="applyUATTrackingFilters()" style="width:200px">
-                                                        <option value="">-- Todos --</option>
-                                                        ${uniqueScopeItems.map(s => `<option value="${s}">${s}</option>`).join('')}
-                                                    </select>
-                                                </div>
-                                                <button class="btn btn-outline compact" onclick="resetTrackingFilters()" style="padding: 2px 10px; height: 34px; font-size: 0.75rem; min-width: auto; background: white;">
-                                                    <i class="fas fa-undo"></i> Reset
-                                                </button>
-                                            </div>
-                                            <div style="overflow-x: auto; width: 100%;">
-                                                <table class="alv-table" style="min-width: 2100px; border-collapse: collapse; font-size: 0.85rem;">
-                                                    <thead>
-                                                        <tr>
-                                                            <th style="width:120px; background: #f1f5f9; position:sticky; left:0; z-index:10;">Caso/Paso</th>
-                                                            <th style="width:80px; background: #f1f5f9;">LOB</th>
-                                                            <th style="width:250px; background: #f1f5f9;">Escenario</th>
-                                                            <th style="width:250px; background: #f1f5f9;">Resultado Esperado</th>
+        <div class="tracking-filters" style="display:flex; gap:15px; margin-bottom:15px; background:#f8f9fa; padding:12px; border-radius:8px; border:1px solid #eee; align-items:flex-end; flex-wrap:wrap;">
+            <div class="filter-group">
+                <label style="font-size:0.7rem; font-weight:bold; display:block; margin-bottom:4px; color:#555;">LOB:</label>
+                <select id="filter-tracking-lob" class="form-control compact" onchange="applyUATTrackingFilters()" style="width:150px">
+                    <option value="">-- Todos --</option>
+                    ${uniqueLobs.map(l => `<option value="${l}">${l}</option>`).join('')}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label style="font-size:0.7rem; font-weight:bold; display:block; margin-bottom:4px; color:#555;">BÚSQUEDA GENERAL / ESCENARIO:</label>
+                <input type="text" id="filter-tracking-scenario" class="form-control compact" placeholder="Buscar texto, objeto, app..." onkeyup="applyUATTrackingFilters()" style="width:250px">
+            </div>
+            <div class="filter-group">
+                <label style="font-size:0.7rem; font-weight:bold; display:block; margin-bottom:4px; color:#555;">SCOPE ITEM:</label>
+                <select id="filter-tracking-scope" class="form-control compact" onchange="applyUATTrackingFilters()" style="width:200px">
+                    <option value="">-- Todos --</option>
+                    ${uniqueScopeItems.map(s => `<option value="${s}">${s}</option>`).join('')}
+                </select>
+            </div>
+            <button class="btn btn-outline compact" onclick="resetTrackingFilters()" style="padding: 2px 10px; height: 34px; font-size: 0.75rem; min-width: auto; background: white;">
+                <i class="fas fa-undo"></i> Reset
+            </button>
+        </div>
+        <div style="overflow-x: auto; width: 100%;">
+            <table class="alv-table" style="min-width: 2700px; border-collapse: collapse; font-size: 0.85rem;">
+                <thead>
+                    <tr>
+                        <th style="width:120px; background: #f1f5f9; position:sticky; left:0; z-index:10;">Caso/Paso</th>
+                        <th style="width:80px; background: #f1f5f9;">LOB</th>
+                        <th style="width:70px; background: #f1f5f9;">BP</th>
+                        <th style="width:160px; background: #f1f5f9;">Scope Item</th>
+                        <th style="width:110px; background: #e3f2fd;">Acción</th>
+                        <th style="width:140px; background: #e3f2fd;">Objeto</th>
+                        <th style="width:220px; background: #e3f2fd;">Descripción Prueba</th>
+                        <th style="width:180px; background: #e3f2fd;">App Fiori</th>
+                        <th style="width:220px; background: #f1f5f9;">Escenario</th>
+                        <th style="width:220px; background: #f1f5f9;">Resultado Esperado</th>
 
-                                                            <!-- EDITABLE COLUMNS -->
-                                                            <th style="width:300px; background: #fffde7; border-bottom: 2px solid #fbc02d;">Resultado Obtenido</th>
-                                                            <th style="width:130px; background: #fffde7; border-bottom: 2px solid #fbc02d;">Estado OK/NOK</th>
-                                                            <th style="width:150px; background: #fffde7; border-bottom: 2px solid #fbc02d;">Defecto Asociado</th>
-                                                            <th style="width:150px; background: #fffde7; border-bottom: 2px solid #fbc02d;">Tipo Pruebas</th>
-                                                            <th style="width:180px; background: #fffde7; border-bottom: 2px solid #fbc02d;">Rol Responsable</th>
-                                                            <th style="width:180px; background: #fffde7; border-bottom: 2px solid #fbc02d;">ID Req/Historia</th>
-
-                                                            <th style="background: #f1f5f9;">BP</th>
-                                                            <th style="background: #f1f5f9;">Scope Item</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        ${data.map(u => {
-        const statusColor = u.estado_ok_nok === 'OK' ? '#2e7d32' : (u.estado_ok_nok === 'NOK' ? '#d32f2f' : '#333');
-        return `
+                        <!-- EDITABLE COLUMNS -->
+                        <th style="width:280px; background: #fffde7; border-bottom: 2px solid #fbc02d;">Resultado Obtenido</th>
+                        <th style="width:120px; background: #fffde7; border-bottom: 2px solid #fbc02d;">Estado OK/NOK</th>
+                        <th style="width:140px; background: #fffde7; border-bottom: 2px solid #fbc02d;">Defecto Asociado</th>
+                        <th style="width:130px; background: #fffde7; border-bottom: 2px solid #fbc02d;">Tipo Pruebas</th>
+                        <th style="width:160px; background: #fffde7; border-bottom: 2px solid #fbc02d;">Rol Responsable</th>
+                        <th style="width:150px; background: #fffde7; border-bottom: 2px solid #fbc02d;">ID Req/Historia</th>
+                        <th style="width:70px; position:sticky; right:0; background:#f1f5f9; text-align:center; z-index:10;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.map(u => {
+                        const statusColor = u.estado_ok_nok === 'OK' ? '#2e7d32' : (u.estado_ok_nok === 'NOK' ? '#d32f2f' : '#333');
+                        return `
                         <tr data-id="${u.id}">
-                            <td style="font-weight: 600; position:sticky; left:0; background:white; z-index:5; border-right:2px solid #eee;">${u.id_casop || '-'}</td>
-                            <td>${u.id_lob || '-'}</td>
-                            <td title="${u.escenario}">${u.escenario ? (u.escenario.substring(0, 45) + '...') : '-'}</td>
-                            <td title="${u.resultado_esperado}">${u.resultado_esperado ? (u.resultado_esperado.substring(0, 45) + '...') : '-'}</td>
+                            <td class="col-casop" style="font-weight: 600; position:sticky; left:0; background:white; z-index:5; border-right:2px solid #eee;">${u.id_casop || '-'}</td>
+                            <td class="col-lob">${u.id_lob || '-'}</td>
+                            <td class="col-bp">${u.id_bp || '-'}</td>
+                            <td class="col-scope">${u.proceso_scope_item || '-'}</td>
+                            <td class="col-accion"><b>${u.accion || '-'}</b></td>
+                            <td class="col-objeto">${u.objeto || '-'}</td>
+                            <td class="col-desc-prueba" title="${(u.descripcion_prueba || '').replace(/"/g, '&quot;')}">${u.descripcion_prueba ? (u.descripcion_prueba.substring(0, 45) + (u.descripcion_prueba.length > 45 ? '...' : '')) : '-'}</td>
+                            <td class="col-app-fiori" title="${(u.app_fiori || '').replace(/"/g, '&quot;')}">${u.app_fiori || '-'}</td>
+                            <td class="col-scenario" title="${(u.escenario || '').replace(/"/g, '&quot;')}">${u.escenario ? (u.escenario.substring(0, 45) + (u.escenario.length > 45 ? '...' : '')) : '-'}</td>
+                            <td class="col-resultado-esperado" title="${(u.resultado_esperado || '').replace(/"/g, '&quot;')}">${u.resultado_esperado ? (u.resultado_esperado.substring(0, 45) + (u.resultado_esperado.length > 45 ? '...' : '')) : '-'}</td>
                             
                             <!-- EDITABLES -->
                             <td>
@@ -7914,17 +13344,16 @@ function renderUATTrackingTable(data) {
                             <td>
                                 <input class="tracking-input" data-field="id_requisito_historia" style="width:100%; height:24px; border:1px solid #ddd; padding:0 4px; font-size:0.75rem;" value="${u.id_requisito_historia || ''}">
                             </td>
-                            
-                            <!-- REST OF DATA -->
-                            <td>${u.id_bp || '-'}</td>
-                            <td>${u.proceso_scope_item || '-'}</td>
+                            <td style="position: sticky; right: 0; background: white; text-align: center; z-index: 5;">
+                                <button class="btn-icon" title="Ver detalles caso" onclick="viewUATDetails('${u.id}')"><i class="fas fa-eye"></i></button>
+                            </td>
                         </tr>
                         `;
-    }).join('')}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                            `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
 }
 
 async function saveUATTracking() {
@@ -7980,22 +13409,23 @@ async function exportUATTrackingToExcel() {
 
     const excelData = [];
     rows.forEach(row => {
-        const cells = row.querySelectorAll('td');
-        const inputs = row.querySelectorAll('.tracking-input');
-
         const dataRow = {
-            "Caso/Paso": cells[0].innerText,
-            "LOB": cells[1].innerText,
-            "Escenario": cells[2].getAttribute('title') || cells[2].innerText,
-            "Resultado Esperado": cells[3].getAttribute('title') || cells[3].innerText,
-            "Resultado Obtenido": inputs[0].value,
-            "Estado": inputs[1].value,
-            "Defecto": inputs[2].value,
-            "Tipo Prueba": inputs[3].value,
-            "Responsable": inputs[4].value,
-            "ID Historia/Req": inputs[5].value,
-            "BP": cells[10].innerText,
-            "Scope Item": cells[11].innerText
+            "Caso/Paso": row.querySelector('.col-casop')?.innerText.trim() || '',
+            "LOB": row.querySelector('.col-lob')?.innerText.trim() || '',
+            "BP": row.querySelector('.col-bp')?.innerText.trim() || '',
+            "Scope Item": row.querySelector('.col-scope')?.innerText.trim() || '',
+            "Acción": row.querySelector('.col-accion')?.innerText.trim() || '',
+            "Objeto": row.querySelector('.col-objeto')?.innerText.trim() || '',
+            "Descripción Prueba": row.querySelector('.col-desc-prueba')?.getAttribute('title') || row.querySelector('.col-desc-prueba')?.innerText.trim() || '',
+            "App Fiori": row.querySelector('.col-app-fiori')?.getAttribute('title') || row.querySelector('.col-app-fiori')?.innerText.trim() || '',
+            "Escenario": row.querySelector('.col-scenario')?.getAttribute('title') || row.querySelector('.col-scenario')?.innerText.trim() || '',
+            "Resultado Esperado": row.querySelector('.col-resultado-esperado')?.getAttribute('title') || row.querySelector('.col-resultado-esperado')?.innerText.trim() || '',
+            "Resultado Obtenido": row.querySelector('[data-field="resultado_obtenido"]')?.value || '',
+            "Estado": row.querySelector('[data-field="estado_ok_nok"]')?.value || '',
+            "Defecto": row.querySelector('[data-field="defecto_asociado"]')?.value || '',
+            "Tipo Prueba": row.querySelector('[data-field="tipo_prueba"]')?.value || '',
+            "Responsable": row.querySelector('[data-field="rol_perfil_responsable"]')?.value || '',
+            "ID Historia/Req": row.querySelector('[data-field="id_requisito_historia"]')?.value || ''
         };
         excelData.push(dataRow);
     });
@@ -8004,16 +13434,29 @@ async function exportUATTrackingToExcel() {
 
     // Auto-size columns (basic)
     const wscols = [
-        { wch: 15 }, { wch: 10 }, { wch: 40 }, { wch: 40 },
-        { wch: 40 }, { wch: 15 }, { wch: 20 }, { wch: 20 },
-        { wch: 25 }, { wch: 20 }, { wch: 10 }, { wch: 30 }
+        { wch: 15 }, // Caso/Paso
+        { wch: 10 }, // LOB
+        { wch: 10 }, // BP
+        { wch: 25 }, // Scope Item
+        { wch: 15 }, // Acción
+        { wch: 20 }, // Objeto
+        { wch: 35 }, // Descripción Prueba
+        { wch: 30 }, // App Fiori
+        { wch: 35 }, // Escenario
+        { wch: 35 }, // Resultado Esperado
+        { wch: 35 }, // Resultado Obtenido
+        { wch: 15 }, // Estado
+        { wch: 20 }, // Defecto
+        { wch: 15 }, // Tipo Prueba
+        { wch: 20 }, // Responsable
+        { wch: 20 }  // ID Historia/Req
     ];
     worksheet['!cols'] = wscols;
 
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Seguimiento UAT");
 
-    const fileName = `Seguimiento_UAT_${state.selectedProject.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    const fileName = `Seguimiento_UAT_${(state.selectedProject.name || 'Proyecto').replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
     XLSX.writeFile(workbook, fileName);
 }
 
@@ -8024,12 +13467,21 @@ async function applyUATTrackingFilters() {
 
     const rows = document.querySelectorAll('#uat-tracking-container tbody tr');
     rows.forEach(row => {
-        const rowLob = row.cells[1].innerText.toLowerCase();
-        const rowScenario = row.cells[2].innerText.toLowerCase() + (row.cells[2].getAttribute('title')?.toLowerCase() || '');
-        const rowScope = row.cells[11].innerText.toLowerCase();
+        const rowLob = (row.querySelector('.col-lob')?.innerText || '').toLowerCase();
+        const rowScenario = (row.querySelector('.col-scenario')?.innerText || row.querySelector('.col-scenario')?.getAttribute('title') || '').toLowerCase();
+        const rowAccion = (row.querySelector('.col-accion')?.innerText || '').toLowerCase();
+        const rowObjeto = (row.querySelector('.col-objeto')?.innerText || '').toLowerCase();
+        const rowApp = (row.querySelector('.col-app-fiori')?.innerText || '').toLowerCase();
+        const rowDesc = (row.querySelector('.col-desc-prueba')?.innerText || row.querySelector('.col-desc-prueba')?.getAttribute('title') || '').toLowerCase();
+        const rowScope = (row.querySelector('.col-scope')?.innerText || '').toLowerCase();
 
         const matchLob = !lob || rowLob.includes(lob);
-        const matchScenario = !scenario || rowScenario.includes(scenario);
+        const matchScenario = !scenario || 
+            rowScenario.includes(scenario) || 
+            rowAccion.includes(scenario) || 
+            rowObjeto.includes(scenario) || 
+            rowApp.includes(scenario) || 
+            rowDesc.includes(scenario);
         const matchScope = !scope || rowScope.includes(scope);
 
         if (matchLob && matchScenario && matchScope) {
@@ -8112,6 +13564,42 @@ function toggleSection(header) {
     const content = wrapper.querySelector('.collapsible-content');
     header.classList.toggle('expanded-header');
     content.classList.toggle('expanded');
+
+    // Toggle icon plus / minus
+    const icon = header.querySelector('.toggle-icon');
+    if (icon) {
+        if (content.classList.contains('expanded')) {
+            icon.classList.remove('fa-plus-circle');
+            icon.classList.add('fa-minus-circle');
+        } else {
+            icon.classList.remove('fa-minus-circle');
+            icon.classList.add('fa-plus-circle');
+        }
+    }
+
+    // Trigger charts layout update when expanding
+    if (content.classList.contains('expanded')) {
+        setTimeout(() => {
+            window.dispatchEvent(new Event('resize'));
+            if (window.estKpiCharts && window.estExecCachedData) {
+                window.renderEstCharts(window.estExecCachedData);
+            }
+            if (window.estPhaseCharts && window.estPhaseCachedData) {
+                window.renderEstPhaseCharts(window.estPhaseCachedData);
+            }
+            if (window.estRiskCharts && window.estRiskCachedData) {
+                window.renderEstRiskCharts(window.estRiskCachedData);
+            }
+            if (window.updateIncidentDashboard) {
+                const prjSel = document.getElementById('analytics-filter-project');
+                if (prjSel && prjSel.options.length <= 1 && window.fetchLiveIncidentsAndUpdate) {
+                    window.fetchLiveIncidentsAndUpdate(state.selectedProject?.id);
+                } else {
+                    window.updateIncidentDashboard();
+                }
+            }
+        }, 150);
+    }
 }
 
 // --- DASHBOARD NEWS CAROUSEL LOGIC ---
